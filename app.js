@@ -114,12 +114,7 @@
       if (p && p.catch) p.catch(function () { keep = null; });
       if ("mediaSession" in navigator) {
         var hook = function (a, fn) {
-          try {
-            navigator.mediaSession.setActionHandler(a, function () {
-              if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); }
-              fn();
-            });
-          } catch (e) {}
+          try { navigator.mediaSession.setActionHandler(a, fn); } catch (e) {}
         };
         /* Botões da notificação: pausar/retomar o treino, concluir a próxima série, desfazer a última. */
         hook("pause", pauseSession);
@@ -198,7 +193,7 @@
       var d = findDay(sess.dayId), p = nextPending();
       navigator.mediaSession.metadata = new MediaMetadata({
         title: title,
-        artist: "Treino " + clock(el),
+        artist: "Treino " + clock(el) + (p ? " · " + p.name + " " + (p.n + 1) + "/" + p.total : ""),
         album: (d ? d.title.split("·")[1].trim() : "Meu Treino") + (p ? " · " + p.name + " (série " + (p.n + 1) + "/" + p.total + ")" : " · todas as séries feitas"),
         artwork: [
           { src: new URL("icons/icon-192.png", location.href).href, sizes: "192x192", type: "image/png" },
@@ -206,9 +201,14 @@
         ]
       });
       navigator.mediaSession.playbackState = paused ? "paused" : "playing";
+      /* A barra mostra o descanso (0 até a meta). Parada ou sem descanso, fica congelada, para não exibir o loop do áudio. */
       if (navigator.mediaSession.setPositionState) {
-        if (rest != null && !paused) navigator.mediaSession.setPositionState({ duration: target, position: Math.min(rest, target), playbackRate: 1 });
-        else navigator.mediaSession.setPositionState();
+        var running = rest != null && !paused && rest < target;
+        navigator.mediaSession.setPositionState({
+          duration: target,
+          position: rest == null ? 0 : Math.min(rest, target),
+          playbackRate: running ? 1 : 0.000001
+        });
       }
     } catch (e) {}
   }
@@ -217,6 +217,8 @@
     if (!sess || sess.pausedAt) return;
     sess.pausedAt = Date.now();
     saveSess();
+    /* Pausa também o áudio silencioso, para o botão da notificação virar "play". */
+    try { if (keep) keep.pause(); } catch (e) {}
     tick();
   }
   function resumeSession() {
@@ -226,6 +228,7 @@
     if (sess.restStart) sess.restStart += gap;
     sess.pausedAt = null;
     saveSess();
+    if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); } else startKeepAlive();
     tick();
   }
   function refreshSetRows() {
@@ -612,7 +615,7 @@
   });
   /* Reabrir o app com treino em andamento: o primeiro toque religa o áudio que mantém o timer na tela de bloqueio. */
   document.addEventListener("click", function () {
-    if (sess && !keep) { ensureAudio(); startKeepAlive(); }
+    if (sess && !keep && !sess.pausedAt) { ensureAudio(); startKeepAlive(); }
   });
 
   /* ---------- instalação e offline ---------- */
@@ -634,5 +637,5 @@
 
   renderSettings();
   selectDay(sess ? sess.dayId : JS_DAY_TO_ID[new Date().getDay()]);
-  if (sess) { startTicker(); startKeepAlive(); acquireWake(); tick(); }
+  if (sess) { startTicker(); if (!sess.pausedAt) startKeepAlive(); acquireWake(); tick(); }
 })();
