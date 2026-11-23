@@ -73,7 +73,7 @@
     try { if (sess) localStorage.setItem(SKEY, JSON.stringify(sess)); else localStorage.removeItem(SKEY); } catch (e) {}
   }
 
-  var ticker = null, keep = null, keepUrl = null, wl = null, ac = null;
+  var ticker = null, keep = null, keepUrl = null, keepErr = null, wl = null, ac = null;
 
   function ensureAudio() {
     try {
@@ -111,8 +111,9 @@
       keepUrl = URL.createObjectURL(silentWav());
       keep = new Audio(keepUrl);
       keep.loop = true;
+      keepErr = null;
       var p = keep.play();
-      if (p && p.catch) p.catch(function () { keep = null; });
+      if (p && p.catch) p.catch(function (err) { keep = null; keepErr = (err && err.name) || "erro"; });
       if ("mediaSession" in navigator) {
         var hook = function (a, fn) {
           try { navigator.mediaSession.setActionHandler(a, fn); } catch (e) {}
@@ -285,13 +286,17 @@
     $("bar-day").textContent = d ? d.title.split("·")[1].trim() : "";
     $("bar-el").textContent = clock(el);
     $("bar-rest").textContent = rest == null ? "--:--" : clock(rest);
-    $("bar-target").textContent = rest == null ? "Marque uma série para começar" : "meta " + clock(target);
+    $("bar-target").textContent = rest == null ? "ou toque na série feita" : "meta " + clock(target);
     $("prog").style.width = (rest == null ? 0 : Math.min(100, rest / target * 100)) + "%";
     bar.classList.toggle("ready", rest != null && rest >= target && !sess.pausedAt);
     bar.classList.toggle("paused", !!sess.pausedAt);
     $("bar-pause").textContent = sess.pausedAt ? "Retomar" : "Pausar";
     if (sess.pausedAt) $("bar-target").textContent = "treino pausado";
-    $("bar-reset").hidden = rest == null;
+    $("bar-reset").textContent = rest == null ? "Iniciar descanso" : "Parar";
+    $("bar-reset").disabled = !!sess.pausedAt;
+    var needTray = state.settings.lock && !keep && !sess.pausedAt;
+    $("bar-tray").hidden = !needTray;
+    if (needTray) $("bar-tray-msg").textContent = "Timer da bandeja inativo" + (keepErr ? " (" + keepErr + ")" : "");
   }
 
   function tick() {
@@ -346,7 +351,7 @@
   function setsRow(day, it) {
     var key = day.id + ":" + it[0], total = setsOf(it[1]);
     var n = (sess && sess.dayId === day.id && sess.sets[key]) || 0;
-    var h = '<span class="sets-label">Séries</span>';
+    var h = '<span class="sets-label">' + (sess && sess.dayId === day.id ? "Toque ao terminar a série" : "Séries") + "</span>";
     for (var i = 0; i < total; i++) {
       h += '<button class="set' + (i < n ? " done" : "") + '" data-set="' + key + '" data-i="' + i + '" aria-pressed="' + (i < n) +
         '" aria-label="Série ' + (i + 1) + '">' + (i < n ? "✓" : (i + 1)) + "</button>";
@@ -445,7 +450,8 @@
       '<div class="day-head"><div><h2>' + day.title + '</h2><div class="sub">' + day.sub + "</div></div>" +
       '<div class="chips"><span class="chip">' + total + ' séries</span><span class="chip">~' + Math.round(total * 3.2) + ' min</span>' +
       '<span class="chip on" id="chip-done"></span></div></div>';
-    if (!sess) html += '<div style="margin-top:12px"><button class="btn primary" id="start">Iniciar treino</button></div>';
+    if (!sess) html += '<div style="margin-top:12px"><button class="btn primary" id="start">Iniciar treino</button>' +
+      '<p class="sub" style="margin-top:6px">Depois de iniciar, toque no número de cada série ao terminá-la para começar o descanso.</p></div>';
     html += '<div class="list">';
     day.items.forEach(function (it) { html += exHTML(day, it); });
     html += "</div></div>";
@@ -581,10 +587,16 @@
   $("bar-end").addEventListener("click", endSession);
   $("bar-pause").addEventListener("click", function () { if (sess && sess.pausedAt) resumeSession(); else pauseSession(); });
   $("bar-reset").addEventListener("click", function () {
-    if (!sess) return;
-    sess.restStart = null;
+    if (!sess || sess.pausedAt) return;
+    if (sess.restStart) sess.restStart = null;
+    else { sess.restStart = Date.now(); ensureAudio(); }
     sess.restAlerted = false;
     saveSess();
+    tick();
+  });
+  $("bar-tray-btn").addEventListener("click", function () {
+    ensureAudio();
+    startKeepAlive();
     tick();
   });
 

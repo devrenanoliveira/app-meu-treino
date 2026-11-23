@@ -11,7 +11,7 @@ App web instalável (PWA) com o treino PPL semanal, guia de execução de cada e
 ## Cronômetros
 
 - **Iniciar treino** liga o contador do treino e uma barra fixa no rodapé.
-- Toque no número de cada **série** ao terminá-la: o descanso começa a contar e o app avisa (vibração, som e notificação) ao completar o tempo escolhido (padrão 2:00).
+- Toque no número de cada **série** ao terminá-la (ou em **Iniciar descanso** na barra): o descanso começa a contar e o app avisa (vibração, som e notificação) ao completar o tempo escolhido (padrão 2:00).
 - O timer também aparece na tela de bloqueio e nas notificações do Android (ajustes do cronômetro).
 - **Pausar/Retomar** congela os dois contadores (barra do rodapé ou botão play/pause da notificação).
 - Na notificação, os botões de faixa funcionam como atalhos: **próxima** conclui a próxima série e **anterior** desfaz a última.
