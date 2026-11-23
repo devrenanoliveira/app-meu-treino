@@ -18,6 +18,15 @@ var EX = {
     e: "Imagine abraçar uma árvore larga enquanto sobe os halteres.",
     x: "Banco muito inclinado (acima de 45 graus) transforma o exercício em desenvolvimento de ombro."
   },
+  "crossover-polia": {
+    n: "Crossover na polia (alta para baixa)", m: "Peitoral, parte inferior e meio",
+    s: ["Polias na altura dos ombros ou acima, uma alça em cada mão.",
+        "Dê um passo à frente, tronco levemente inclinado, cotovelos levemente flexionados.",
+        "Traga as mãos para frente e para baixo, cruzando na frente do quadril, apertando o peito.",
+        "Volte devagar até sentir o peito alongar, sem deixar os ombros irem para frente."],
+    e: "Imagine abraçar uma bola grande de cima para baixo, mantendo o ângulo dos cotovelos o tempo todo.",
+    x: "Usar o corpo para jogar a carga. Reduza o peso e controle a volta."
+  },
   "voador": {
     n: "Voador (peck deck)", m: "Peitoral",
     s: ["Ajuste o assento para as alças ficarem na altura do meio do peito.",
@@ -291,13 +300,13 @@ var DAYS = [
     ["elev-lat", "3x12-15", { d: "23/11", w: "14 kg", r: "10 reps", n: "drop na última" }],
     ["triceps-polia", "3x10-12", { d: "23/11", w: "12 placas", r: "cerca de 10 reps", n: "drop na última" }] ] },
   { id: "ter", d: "Ter", t: "Pull", l: "A", c: "pull", title: "Terça · Pull A", sub: "Puxada como exercício principal", items: [
-    ["puxada", "3x6-10"], ["remada-horiz", "3x8-10"], ["remada-unilat", "2x10-12"], ["crucifixo-inverso", "3x12-15"], ["rosca-direta", "3x8-10"], ["rosca-martelo", "2x10-12"] ] },
+    ["puxada", "3x6-10"], ["remada-horiz", "3x8-10"], ["remada-unilat", "3x10-12"], ["crucifixo-inverso", "3x12-15"], ["rosca-direta", "3x8-10"], ["rosca-martelo", "3x10-12"] ] },
   { id: "qua", d: "Qua", t: "Legs", l: "Pesado", c: "legs", title: "Quarta · Legs A", sub: "Dia pesado", items: [
     ["agachamento", "3x6-8"], ["stiff", "3x8-10"], ["extensora", "3x10-12"], ["mesa-flexora", "3x10-12"], ["adutora", "3x12-15"], ["panturrilha-pe", "4x12-15"], ["abdominal", "3x12-15"] ] },
   { id: "qui", d: "Qui", t: "Push", l: "Leve", c: "push", title: "Quinta · Push B", sub: "Outros ângulos e mais repetições", items: [
-    ["supino-inc-barra", "3x8-10"], ["supino-reto-halt", "3x10-12"], ["des-maq", "3x10-12"], ["elev-lat-polia", "3x12-15"], ["triceps-testa", "3x10-12"] ] },
+    ["supino-inc-barra", "3x8-10"], ["supino-reto-halt", "3x10-12"], ["crossover-polia", "3x12-15"], ["des-maq", "3x10-12"], ["elev-lat-polia", "3x12-15"], ["triceps-testa", "3x10-12"] ] },
   { id: "sex", d: "Sex", t: "Pull", l: "B", c: "pull", title: "Sexta · Pull B", sub: "Remada horizontal como exercício principal", items: [
-    ["remada-horiz", "3x6-8"], ["puxada-neutra", "3x10-12"], ["remada-curvada", "2x10-12"], ["crucifixo-inverso", "3x12-15"], ["rosca-alternada", "3x10-12"], ["rosca-martelo", "2x10-12"] ] },
+    ["remada-horiz", "3x6-8"], ["puxada-neutra", "3x10-12"], ["remada-curvada", "2x10-12"], ["crucifixo-inverso", "3x12-15"], ["rosca-alternada", "3x10-12"], ["rosca-martelo", "3x10-12"] ] },
   { id: "sab", d: "Sáb", t: "Legs", l: "Leve", c: "legs", title: "Sábado · Legs B", sub: "Mais repetições, menos carga", items: [
     ["leg-press", "3x10-12"], ["afundo", "3x10-12 por perna"], ["mesa-flexora", "3x10-12"], ["extensora", "2x12-15"], ["abdutora", "3x12-15"], ["panturrilha-sentado", "4x12-15"], ["abdominal", "3x12-15"] ] },
   { id: "dom", d: "Dom", t: "Off", l: "", c: "rest", title: "Domingo · Descanso", sub: "Recuperação", items: [] }
