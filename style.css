@@ -149,6 +149,9 @@ th { color: var(--muted); font-weight: 600; }
 .bar-day, .bar-target { font-size: 13px; color: var(--muted); margin-left: 6px; }
 .prog { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; max-width: 760px; width: 100%; margin: 0 auto; }
 .prog i { display: block; height: 100%; width: 0; background: var(--c, var(--ink)); }
+.bar-btns { display: flex; gap: 8px; }
+.bar.paused #bar-el, .bar.paused #bar-rest { color: var(--muted); }
+.bar.paused .prog i { opacity: .4; }
 .bar.ready { background: color-mix(in srgb, var(--ok) 18%, var(--surface)); }
 .bar.ready .prog i { background: var(--ok); }
 .bar.ready #bar-rest { color: var(--ok); }

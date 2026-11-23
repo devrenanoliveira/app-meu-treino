@@ -113,9 +113,19 @@
       var p = keep.play();
       if (p && p.catch) p.catch(function () { keep = null; });
       if ("mediaSession" in navigator) {
-        ["play", "pause"].forEach(function (a) {
-          try { navigator.mediaSession.setActionHandler(a, function () { if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); } }); } catch (e) {}
-        });
+        var hook = function (a, fn) {
+          try {
+            navigator.mediaSession.setActionHandler(a, function () {
+              if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); }
+              fn();
+            });
+          } catch (e) {}
+        };
+        /* Botões da notificação: pausar/retomar o treino, concluir a próxima série, desfazer a última. */
+        hook("pause", pauseSession);
+        hook("play", resumeSession);
+        hook("nexttrack", completeNextSet);
+        hook("previoustrack", undoLastSet);
       }
     } catch (e) { keep = null; }
   }
@@ -171,26 +181,83 @@
     notify("Descanso completo", "Passaram " + clock(state.settings.rest) + ". Hora da próxima série.");
   }
 
+  function nextPending() {
+    var d = findDay(sess.dayId);
+    for (var i = 0; i < d.items.length; i++) {
+      var it = d.items[i], key = d.id + ":" + it[0], total = setsOf(it[1]), n = sess.sets[key] || 0;
+      if (n < total) return { key: key, name: EX[it[0]].n, n: n, total: total };
+    }
+    return null;
+  }
+
   function updateMedia(el, rest) {
     if (!state.settings.lock || !keep || !("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
-    var target = state.settings.rest;
-    var title = rest == null ? "Treino em andamento" : (rest >= target ? "Descanso completo " : "Descanso ") + clock(rest) + " / " + clock(target);
+    var target = state.settings.rest, paused = !!sess.pausedAt;
+    var title = paused ? "Treino pausado" : rest == null ? "Treino em andamento" : (rest >= target ? "Descanso completo " : "Descanso ") + clock(rest) + " / " + clock(target);
     try {
-      var d = findDay(sess.dayId);
+      var d = findDay(sess.dayId), p = nextPending();
       navigator.mediaSession.metadata = new MediaMetadata({
         title: title,
         artist: "Treino " + clock(el),
-        album: d ? d.title : "Meu Treino",
+        album: (d ? d.title.split("·")[1].trim() : "Meu Treino") + (p ? " · " + p.name + " (série " + (p.n + 1) + "/" + p.total + ")" : " · todas as séries feitas"),
         artwork: [
           { src: new URL("icons/icon-192.png", location.href).href, sizes: "192x192", type: "image/png" },
           { src: new URL("icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }
         ]
       });
-      navigator.mediaSession.playbackState = "playing";
-      if (rest != null && navigator.mediaSession.setPositionState) {
-        navigator.mediaSession.setPositionState({ duration: target, position: Math.min(rest, target), playbackRate: 1 });
+      navigator.mediaSession.playbackState = paused ? "paused" : "playing";
+      if (navigator.mediaSession.setPositionState) {
+        if (rest != null && !paused) navigator.mediaSession.setPositionState({ duration: target, position: Math.min(rest, target), playbackRate: 1 });
+        else navigator.mediaSession.setPositionState();
       }
     } catch (e) {}
+  }
+
+  function pauseSession() {
+    if (!sess || sess.pausedAt) return;
+    sess.pausedAt = Date.now();
+    saveSess();
+    tick();
+  }
+  function resumeSession() {
+    if (!sess || !sess.pausedAt) return;
+    var gap = Date.now() - sess.pausedAt;
+    sess.startedAt += gap;
+    if (sess.restStart) sess.restStart += gap;
+    sess.pausedAt = null;
+    saveSess();
+    tick();
+  }
+  function refreshSetRows() {
+    if (!sess) return;
+    var day = findDay(current);
+    if (!day || day.id !== sess.dayId) return;
+    Array.prototype.forEach.call(document.querySelectorAll("#day .ex"), function (card) {
+      var key = card.getAttribute("data-key");
+      var it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
+      if (it) card.querySelector(".sets-row").innerHTML = setsRow(day, it);
+    });
+  }
+  function completeNextSet() {
+    if (!sess || sess.pausedAt) return;
+    var p = nextPending();
+    if (!p) { toast("Todas as séries já foram marcadas"); return; }
+    sess.sets[p.key] = p.n + 1;
+    sess.order = sess.order || [];
+    sess.order.push(p.key);
+    sess.restStart = Date.now();
+    sess.restAlerted = false;
+    saveSess();
+    refreshSetRows();
+    tick();
+  }
+  function undoLastSet() {
+    if (!sess || !sess.order || !sess.order.length) return;
+    var k = sess.order.pop();
+    sess.sets[k] = Math.max(0, (sess.sets[k] || 1) - 1);
+    saveSess();
+    refreshSetRows();
+    tick();
   }
 
   function renderBar(el, rest) {
@@ -205,16 +272,19 @@
     $("bar-rest").textContent = rest == null ? "--:--" : clock(rest);
     $("bar-target").textContent = rest == null ? "Marque uma série para começar" : "meta " + clock(target);
     $("prog").style.width = (rest == null ? 0 : Math.min(100, rest / target * 100)) + "%";
-    bar.classList.toggle("ready", rest != null && rest >= target);
+    bar.classList.toggle("ready", rest != null && rest >= target && !sess.pausedAt);
+    bar.classList.toggle("paused", !!sess.pausedAt);
+    $("bar-pause").textContent = sess.pausedAt ? "Retomar" : "Pausar";
+    if (sess.pausedAt) $("bar-target").textContent = "treino pausado";
     $("bar-reset").hidden = rest == null;
   }
 
   function tick() {
     if (!sess) return;
-    var now = Date.now();
+    var now = sess.pausedAt || Date.now();
     var el = (now - sess.startedAt) / 1000;
     var rest = sess.restStart ? (now - sess.restStart) / 1000 : null;
-    if (rest != null && !sess.restAlerted && rest >= state.settings.rest) {
+    if (rest != null && !sess.restAlerted && !sess.pausedAt && rest >= state.settings.rest) {
       sess.restAlerted = true;
       saveSess();
       alertRest(Math.floor(rest));
@@ -229,7 +299,7 @@
   function stopTicker() { clearInterval(ticker); ticker = null; }
 
   function startSession(dayId) {
-    sess = { startedAt: Date.now(), dayId: dayId, sets: {}, restStart: null, restAlerted: false };
+    sess = { startedAt: Date.now(), dayId: dayId, sets: {}, order: [], pausedAt: null, restStart: null, restAlerted: false };
     saveSess();
     ensureAudio();
     requestNotif();
@@ -274,14 +344,19 @@
     var day = findDay(current), it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
     if (!sess) startSession(day.id);
     else if (sess.dayId !== day.id) { toast("Finalize o treino de " + findDay(sess.dayId).d + " antes"); return; }
+    if (sess.pausedAt) { toast("Treino pausado. Toque em Retomar"); return; }
     var n = sess.sets[key] || 0;
+    sess.order = sess.order || [];
     if (i === n) {
       sess.sets[key] = n + 1;
+      sess.order.push(key);
       sess.restStart = Date.now();
       sess.restAlerted = false;
       ensureAudio();
     } else if (i === n - 1) {
       sess.sets[key] = n - 1;
+      var idx = sess.order.lastIndexOf(key);
+      if (idx >= 0) sess.order.splice(idx, 1);
     } else {
       return;
     }
@@ -489,6 +564,7 @@
     if (b) showView(b.getAttribute("data-view"));
   });
   $("bar-end").addEventListener("click", endSession);
+  $("bar-pause").addEventListener("click", function () { if (sess && sess.pausedAt) resumeSession(); else pauseSession(); });
   $("bar-reset").addEventListener("click", function () {
     if (!sess) return;
     sess.restStart = null;
