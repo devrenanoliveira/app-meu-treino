@@ -28,6 +28,23 @@
 
   <section id="treino">
     <nav class="week" role="tablist" aria-label="Dias da semana" id="week"></nav>
+    <details class="settings">
+      <summary>Ajustes do cronômetro</summary>
+      <div class="settings-body">
+        <label>Descanso entre séries
+          <select id="set-rest">
+            <option value="60">1:00</option>
+            <option value="90">1:30</option>
+            <option value="120">2:00</option>
+            <option value="150">2:30</option>
+            <option value="180">3:00</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="set-wake"> Manter a tela ligada durante o treino</label>
+        <label class="check"><input type="checkbox" id="set-lock"> Mostrar o timer na tela de bloqueio e nas notificações</label>
+        <div class="notif-row"><span id="notif-state"></span><button class="btn small" id="set-notif" hidden>Ativar notificações</button></div>
+      </div>
+    </details>
     <main id="day" style="margin-top:16px"></main>
     <h2 class="sec">Regras da semana</h2>
     <div class="rules">
@@ -52,6 +69,17 @@
       </div>
     </div>
   </section>
+</div>
+<div class="bar" id="bar" hidden>
+  <div class="bar-row">
+    <div><span class="bar-k">Treino</span> <b id="bar-el">00:00</b> <span class="bar-day" id="bar-day"></span></div>
+    <button class="btn small" id="bar-end">Finalizar</button>
+  </div>
+  <div class="bar-row">
+    <div><span class="bar-k">Descanso</span> <b id="bar-rest">--:--</b> <span class="bar-target" id="bar-target"></span></div>
+    <button class="btn small" id="bar-reset" hidden>Parar</button>
+  </div>
+  <div class="prog"><i id="prog"></i></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

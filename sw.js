@@ -1,5 +1,5 @@
 /* Service worker: guarda os arquivos do app para abrir sem internet e atualiza em segundo plano. */
-var CACHE = "meutreino-v1";
+var CACHE = "meutreino-v2";
 var ASSETS = [
   "./", "./index.html", "./style.css", "./data.js", "./app.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png"
@@ -28,6 +28,16 @@ self.addEventListener("fetch", function (e) {
         }).catch(function () { return hit || cache.match("./index.html"); });
         return hit || net;
       });
+    })
+  );
+});
+
+self.addEventListener("notificationclick", function (e) {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) { if ("focus" in list[i]) return list[i].focus(); }
+      return self.clients.openWindow("./");
     })
   );
 });

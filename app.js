@@ -2,7 +2,9 @@
 (function () {
   "use strict";
   var KEY = "meutreino:v1";
+  var SKEY = "meutreino:session";
   var JS_DAY_TO_ID = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  var DEFAULTS = { rest: 120, wake: true, lock: true };
 
   /* ---------- utilidades ---------- */
   function pad(n) { return (n < 10 ? "0" : "") + n; }
@@ -12,12 +14,17 @@
   function num(s) { var m = String(s || "").replace(",", ".").match(/\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; }
   function setsOf(str) { return parseInt(str, 10) || 0; }
   function topReps(str) { var m = /x(\d+)(?:-(\d+))?/.exec(str); return m ? parseInt(m[2] || m[1], 10) : 0; }
+  function clock(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return h ? h + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s);
+  }
   function $(id) { return document.getElementById(id); }
 
   /* ---------- estado ---------- */
   function persist(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
   function seed() {
-    var s = { logs: {} };
+    var s = { logs: {}, sessions: [], settings: {} };
     DAYS.forEach(function (day) {
       day.items.forEach(function (it) {
         if (it[2]) {
@@ -36,6 +43,11 @@
     return seed();
   }
   var state = load();
+  function fixState() {
+    state.sessions = Array.isArray(state.sessions) ? state.sessions : [];
+    state.settings = Object.assign({}, DEFAULTS, state.settings || {});
+  }
+  fixState();
   var current;
 
   function entries(key) { return state.logs[key] || []; }
@@ -49,7 +61,234 @@
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1600);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+
+  /* ---------- sessão de treino (cronômetro + descanso) ---------- */
+  var sess = (function () {
+    try { var s = JSON.parse(localStorage.getItem(SKEY)); if (s && s.startedAt) return s; } catch (e) {}
+    return null;
+  })();
+  function saveSess() {
+    try { if (sess) localStorage.setItem(SKEY, JSON.stringify(sess)); else localStorage.removeItem(SKEY); } catch (e) {}
+  }
+
+  var ticker = null, keep = null, wl = null, ac = null;
+
+  function ensureAudio() {
+    try {
+      if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (C) ac = new C(); }
+      if (ac && ac.state === "suspended") ac.resume();
+    } catch (e) {}
+  }
+  function beep() {
+    if (!ac) return;
+    try {
+      [0, 0.35, 0.7].forEach(function (t) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.frequency.value = 880; g.gain.value = 0.2;
+        o.connect(g); g.connect(ac.destination);
+        var s = ac.currentTime + t;
+        o.start(s); o.stop(s + 0.2);
+      });
+    } catch (e) {}
+  }
+
+  /* Áudio silencioso em loop: mantém a página ativa com a tela apagada e mostra o timer na tela de bloqueio. */
+  function silentWav() {
+    var rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    function ws(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    ws(0, "RIFF"); v.setUint32(4, 36 + n, true); ws(8, "WAVE"); ws(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    ws(36, "data"); v.setUint32(40, n, true);
+    for (var i = 0; i < n; i++) v.setUint8(44 + i, i % 4000 === 0 ? 129 : 128);
+    return new Blob([buf], { type: "audio/wav" });
+  }
+  function startKeepAlive() {
+    if (!state.settings.lock || keep) return;
+    try {
+      keep = new Audio(URL.createObjectURL(silentWav()));
+      keep.loop = true;
+      var p = keep.play();
+      if (p && p.catch) p.catch(function () { keep = null; });
+      if ("mediaSession" in navigator) {
+        ["play", "pause"].forEach(function (a) {
+          try { navigator.mediaSession.setActionHandler(a, function () { if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); } }); } catch (e) {}
+        });
+      }
+    } catch (e) { keep = null; }
+  }
+  function stopKeepAlive() {
+    try { if (keep) keep.pause(); } catch (e) {}
+    keep = null;
+    try { if ("mediaSession" in navigator) navigator.mediaSession.metadata = null; } catch (e) {}
+  }
+  function acquireWake() {
+    if (!sess || !state.settings.wake || wl || !("wakeLock" in navigator)) return;
+    try {
+      navigator.wakeLock.request("screen").then(function (l) {
+        wl = l;
+        l.addEventListener("release", function () { wl = null; });
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function releaseWake() { try { if (wl) wl.release(); } catch (e) {} wl = null; }
+
+  function requestNotif() {
+    try {
+      if ("Notification" in window && Notification.permission === "default") {
+        var p = Notification.requestPermission();
+        if (p && p.then) p.then(renderSettings);
+      }
+    } catch (e) {}
+  }
+  function notify(title, body) {
+    try {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      var opts = { body: body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "rest", renotify: true, vibrate: [300, 120, 300] };
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.ready.then(function (reg) { return reg.showNotification(title, opts); }).catch(function () {});
+      } else {
+        new Notification(title, opts);
+      }
+    } catch (e) {}
+  }
+  function closeNotifs() {
+    try {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.ready.then(function (reg) {
+          return reg.getNotifications({ tag: "rest" }).then(function (list) { list.forEach(function (n) { n.close(); }); });
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  function alertRest(sec) {
+    try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+    beep();
+    toast("Descanso completo (" + clock(sec) + ")");
+    notify("Descanso completo", "Passaram " + clock(state.settings.rest) + ". Hora da próxima série.");
+  }
+
+  function updateMedia(el, rest) {
+    if (!state.settings.lock || !keep || !("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
+    var target = state.settings.rest;
+    var title = rest == null ? "Treino em andamento" : (rest >= target ? "Descanso completo " : "Descanso ") + clock(rest) + " / " + clock(target);
+    try {
+      var d = findDay(sess.dayId);
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title,
+        artist: "Treino " + clock(el),
+        album: d ? d.title : "Meu Treino",
+        artwork: [
+          { src: new URL("icons/icon-192.png", location.href).href, sizes: "192x192", type: "image/png" },
+          { src: new URL("icons/icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }
+        ]
+      });
+      navigator.mediaSession.playbackState = "playing";
+      if (rest != null && navigator.mediaSession.setPositionState) {
+        navigator.mediaSession.setPositionState({ duration: target, position: Math.min(rest, target), playbackRate: 1 });
+      }
+    } catch (e) {}
+  }
+
+  function renderBar(el, rest) {
+    var bar = $("bar");
+    if (!sess) { bar.hidden = true; document.body.classList.remove("has-bar"); return; }
+    var target = state.settings.rest, d = findDay(sess.dayId);
+    bar.hidden = false;
+    document.body.classList.add("has-bar");
+    bar.className = "bar " + (d ? d.c : "");
+    $("bar-day").textContent = d ? d.title.split("·")[1].trim() : "";
+    $("bar-el").textContent = clock(el);
+    $("bar-rest").textContent = rest == null ? "--:--" : clock(rest);
+    $("bar-target").textContent = rest == null ? "Marque uma série para começar" : "meta " + clock(target);
+    $("prog").style.width = (rest == null ? 0 : Math.min(100, rest / target * 100)) + "%";
+    bar.classList.toggle("ready", rest != null && rest >= target);
+    $("bar-reset").hidden = rest == null;
+  }
+
+  function tick() {
+    if (!sess) return;
+    var now = Date.now();
+    var el = (now - sess.startedAt) / 1000;
+    var rest = sess.restStart ? (now - sess.restStart) / 1000 : null;
+    if (rest != null && !sess.restAlerted && rest >= state.settings.rest) {
+      sess.restAlerted = true;
+      saveSess();
+      alertRest(Math.floor(rest));
+    }
+    renderBar(el, rest);
+    updateMedia(el, rest);
+  }
+  function startTicker() {
+    if (ticker) return;
+    ticker = setInterval(tick, 1000);
+  }
+  function stopTicker() { clearInterval(ticker); ticker = null; }
+
+  function startSession(dayId) {
+    sess = { startedAt: Date.now(), dayId: dayId, sets: {}, restStart: null, restAlerted: false };
+    saveSess();
+    ensureAudio();
+    requestNotif();
+    startKeepAlive();
+    acquireWake();
+    startTicker();
+    tick();
+    renderDay();
+  }
+
+  function endSession() {
+    if (!sess) return;
+    if (!confirm("Finalizar o treino?")) return;
+    var secs = Math.floor((Date.now() - sess.startedAt) / 1000), sets = 0;
+    Object.keys(sess.sets).forEach(function (k) { sets += sess.sets[k]; });
+    state.sessions.push({ d: todayISO(), day: sess.dayId, secs: secs, sets: sets });
+    persist(state);
+    sess = null;
+    saveSess();
+    stopTicker();
+    stopKeepAlive();
+    releaseWake();
+    closeNotifs();
+    renderBar();
+    renderDay();
+    toast("Treino finalizado em " + clock(secs));
+  }
+
+  function setsRow(day, it) {
+    var key = day.id + ":" + it[0], total = setsOf(it[1]);
+    var n = (sess && sess.dayId === day.id && sess.sets[key]) || 0;
+    var h = '<span class="sets-label">Séries</span>';
+    for (var i = 0; i < total; i++) {
+      h += '<button class="set' + (i < n ? " done" : "") + '" data-set="' + key + '" data-i="' + i + '" aria-pressed="' + (i < n) +
+        '" aria-label="Série ' + (i + 1) + '">' + (i < n ? "✓" : (i + 1)) + "</button>";
+    }
+    return h;
+  }
+
+  function tapSet(btn) {
+    var key = btn.getAttribute("data-set"), i = parseInt(btn.getAttribute("data-i"), 10);
+    var day = findDay(current), it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
+    if (!sess) startSession(day.id);
+    else if (sess.dayId !== day.id) { toast("Finalize o treino de " + findDay(sess.dayId).d + " antes"); return; }
+    var n = sess.sets[key] || 0;
+    if (i === n) {
+      sess.sets[key] = n + 1;
+      sess.restStart = Date.now();
+      sess.restAlerted = false;
+      ensureAudio();
+    } else if (i === n - 1) {
+      sess.sets[key] = n - 1;
+    } else {
+      return;
+    }
+    saveSess();
+    var row = btn.closest(".sets-row");
+    row.innerHTML = setsRow(day, it);
+    tick();
   }
 
   /* ---------- treino ---------- */
@@ -69,6 +308,7 @@
     var h = '<article class="ex" data-key="' + key + '" data-done="' + (!!te) + '">';
     h += '<div class="ex-top"><div class="ex-main"><div class="ex-name">' + esc(ex.n) + (te ? '<span class="badge">Salvo hoje</span>' : "") +
       '</div><div class="ex-muscle">' + esc(ex.m) + '</div></div><div class="ex-sets">' + esc(it[1]) + '</div></div>';
+    h += '<div class="sets-row">' + setsRow(day, it) + "</div>";
     h += '<div class="log">';
     if (pe) {
       h += '<div class="last">Última vez (' + fmt(pe.d) + "): " + esc(pe.w) + (pe.r ? " · " + esc(pe.r) : "") + (pe.n ? " · " + esc(pe.n) : "") + "</div>";
@@ -114,7 +354,9 @@
     var html = '<div class="' + day.c + '">' +
       '<div class="day-head"><div><h2>' + day.title + '</h2><div class="sub">' + day.sub + "</div></div>" +
       '<div class="chips"><span class="chip">' + total + ' séries</span><span class="chip">~' + Math.round(total * 3.2) + ' min</span>' +
-      '<span class="chip on" id="chip-done"></span></div></div><div class="list">';
+      '<span class="chip on" id="chip-done"></span></div></div>';
+    if (!sess) html += '<div style="margin-top:12px"><button class="btn primary" id="start">Iniciar treino</button></div>';
+    html += '<div class="list">';
     day.items.forEach(function (it) { html += exHTML(day, it); });
     html += "</div></div>";
     el.innerHTML = html;
@@ -164,6 +406,14 @@
 
   function renderHist() {
     var html = "";
+    if (state.sessions.length) {
+      html += '<h2 class="sec">Treinos concluídos</h2><div class="slot"><table><thead><tr><th>Data</th><th>Treino</th><th>Duração</th><th>Séries</th></tr></thead><tbody>';
+      state.sessions.slice(-20).reverse().forEach(function (s) {
+        var d = findDay(s.day);
+        html += "<tr><td>" + fmt(s.d) + "</td><td>" + esc(d ? d.title.split("·")[1].trim() : s.day) + "</td><td>" + clock(s.secs) + "</td><td>" + (s.sets || 0) + "</td></tr>";
+      });
+      html += "</tbody></table></div>";
+    }
     DAYS.forEach(function (day) {
       if (!day.items.length) return;
       html += '<div class="hist-group ' + day.c + '"><h2>' + day.title + "</h2>";
@@ -196,18 +446,55 @@
     if (v === "hist") renderHist(); else renderDay();
   }
 
+  /* ---------- ajustes do cronômetro ---------- */
+  function renderSettings() {
+    $("set-rest").value = String(state.settings.rest);
+    $("set-wake").checked = !!state.settings.wake;
+    $("set-lock").checked = !!state.settings.lock;
+    var p = ("Notification" in window) ? Notification.permission : "unsupported";
+    $("notif-state").textContent = p === "granted" ? "Notificações ativadas" : p === "denied" ? "Notificações bloqueadas nas configurações do navegador" : p === "default" ? "Notificações desativadas" : "Este navegador não suporta notificações";
+    $("set-notif").hidden = p !== "default";
+  }
+  $("set-rest").addEventListener("change", function (e) {
+    state.settings.rest = parseInt(e.target.value, 10) || 120;
+    persist(state);
+    if (sess) { sess.restAlerted = false; saveSess(); tick(); }
+  });
+  $("set-wake").addEventListener("change", function (e) {
+    state.settings.wake = e.target.checked;
+    persist(state);
+    if (e.target.checked) acquireWake(); else releaseWake();
+  });
+  $("set-lock").addEventListener("change", function (e) {
+    state.settings.lock = e.target.checked;
+    persist(state);
+    if (e.target.checked) { if (sess) { startKeepAlive(); tick(); } } else stopKeepAlive();
+  });
+  $("set-notif").addEventListener("click", function () { requestNotif(); });
+
   /* ---------- eventos ---------- */
   $("week").addEventListener("click", function (e) {
     var b = e.target.closest(".day-tab");
     if (b) selectDay(b.getAttribute("data-id"));
   });
   $("day").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-save]");
-    if (b) saveEntry(b.closest(".ex"), b.getAttribute("data-save"));
+    var s = e.target.closest("[data-save]");
+    if (s) { saveEntry(s.closest(".ex"), s.getAttribute("data-save")); return; }
+    var c = e.target.closest("[data-set]");
+    if (c) { tapSet(c); return; }
+    if (e.target.id === "start") startSession(current);
   });
   document.querySelector(".seg").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-view]");
     if (b) showView(b.getAttribute("data-view"));
+  });
+  $("bar-end").addEventListener("click", endSession);
+  $("bar-reset").addEventListener("click", function () {
+    if (!sess) return;
+    sess.restStart = null;
+    sess.restAlerted = false;
+    saveSess();
+    tick();
   });
 
   $("export").addEventListener("click", function () {
@@ -230,8 +517,10 @@
         var o = JSON.parse(rd.result);
         if (!o || typeof o.logs !== "object") throw new Error("formato");
         if (!confirm("Substituir os registros atuais pelos do backup?")) return;
-        state = { logs: o.logs };
+        state = { logs: o.logs, sessions: o.sessions, settings: o.settings };
+        fixState();
         persist(state);
+        renderSettings();
         showView($("hist").hidden ? "treino" : "hist");
         toast("Backup importado");
       } catch (err) {
@@ -240,6 +529,14 @@
     };
     rd.readAsText(f);
     e.target.value = "";
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && sess) { acquireWake(); tick(); }
+  });
+  /* Reabrir o app com treino em andamento: o primeiro toque religa o áudio que mantém o timer na tela de bloqueio. */
+  document.addEventListener("click", function () {
+    if (sess && !keep) { ensureAudio(); startKeepAlive(); }
   });
 
   /* ---------- instalação e offline ---------- */
@@ -259,5 +556,7 @@
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   }
 
-  selectDay(JS_DAY_TO_ID[new Date().getDay()]);
+  renderSettings();
+  selectDay(sess ? sess.dayId : JS_DAY_TO_ID[new Date().getDay()]);
+  if (sess) { startTicker(); startKeepAlive(); acquireWake(); tick(); }
 })();

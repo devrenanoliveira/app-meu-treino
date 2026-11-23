@@ -8,6 +8,13 @@ App web instalável (PWA) com o treino PPL semanal, guia de execução de cada e
 2. Toque em **Instalar app** (botão no topo da página ou menu ⋮ do Chrome).
 3. O app ganha ícone na tela inicial e funciona sem internet.
 
+## Cronômetros
+
+- **Iniciar treino** liga o contador do treino e uma barra fixa no rodapé.
+- Toque no número de cada **série** ao terminá-la: o descanso começa a contar e o app avisa (vibração, som e notificação) ao completar o tempo escolhido (padrão 2:00).
+- O timer também aparece na tela de bloqueio e nas notificações do Android (ajustes do cronômetro).
+- **Finalizar** salva a duração e as séries no histórico.
+
 ## Dados
 
 Os registros ficam salvos no próprio aparelho (localStorage). Use **Histórico > Exportar backup** de vez em quando.
