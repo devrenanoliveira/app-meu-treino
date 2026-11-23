@@ -1,5 +1,5 @@
 /* Service worker: guarda os arquivos do app para abrir sem internet e atualiza em segundo plano. */
-var CACHE = "meutreino-v10";
+var CACHE = "meutreino-v11";
 var ASSETS = [
   "./", "./index.html", "./style.css", "./data.js", "./app.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png"
@@ -17,16 +17,17 @@ self.addEventListener("activate", function (e) {
   );
 });
 
+/* Rede primeiro (arquivos sempre na versão mais nova, sem misturar versões); o cache só entra quando está sem internet. */
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  var same = new URL(e.request.url).origin === self.location.origin;
   e.respondWith(
-    caches.open(CACHE).then(function (cache) {
-      return cache.match(e.request, { ignoreSearch: true }).then(function (hit) {
-        var net = fetch(e.request).then(function (res) {
-          if (res && res.ok && new URL(e.request.url).origin === self.location.origin) cache.put(e.request, res.clone());
-          return res;
-        }).catch(function () { return hit || cache.match("./index.html"); });
-        return hit || net;
+    fetch(same ? new Request(e.request.url, { cache: "no-cache" }) : e.request).then(function (res) {
+      if (same && res && res.ok) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); }
+      return res;
+    }).catch(function () {
+      return caches.open(CACHE).then(function (c) {
+        return c.match(e.request, { ignoreSearch: true }).then(function (hit) { return hit || c.match("./index.html"); });
       });
     })
   );
