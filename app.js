@@ -73,7 +73,7 @@
     try { if (sess) localStorage.setItem(SKEY, JSON.stringify(sess)); else localStorage.removeItem(SKEY); } catch (e) {}
   }
 
-  var ticker = null, keep = null, wl = null, ac = null;
+  var ticker = null, keep = null, keepUrl = null, wl = null, ac = null;
 
   function ensureAudio() {
     try {
@@ -108,7 +108,8 @@
   function startKeepAlive() {
     if (!state.settings.lock || keep) return;
     try {
-      keep = new Audio(URL.createObjectURL(silentWav()));
+      keepUrl = URL.createObjectURL(silentWav());
+      keep = new Audio(keepUrl);
       keep.loop = true;
       var p = keep.play();
       if (p && p.catch) p.catch(function () { keep = null; });
@@ -125,9 +126,20 @@
     } catch (e) { keep = null; }
   }
   function stopKeepAlive() {
-    try { if (keep) keep.pause(); } catch (e) {}
+    /* Libera o áudio por completo, senão o Android mantém o cartão de mídia na bandeja. */
+    try { if (keep) { keep.pause(); keep.removeAttribute("src"); keep.load(); } } catch (e) {}
     keep = null;
-    try { if ("mediaSession" in navigator) navigator.mediaSession.metadata = null; } catch (e) {}
+    try { if (keepUrl) URL.revokeObjectURL(keepUrl); } catch (e) {}
+    keepUrl = null;
+    try {
+      if ("mediaSession" in navigator) {
+        ["play", "pause", "nexttrack", "previoustrack"].forEach(function (a) {
+          try { navigator.mediaSession.setActionHandler(a, null); } catch (e) {}
+        });
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+      }
+    } catch (e) {}
   }
   function acquireWake() {
     if (!sess || !state.settings.wake || wl || !("wakeLock" in navigator)) return;
