@@ -103,7 +103,7 @@
     v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
     v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
     ws(36, "data"); v.setUint32(40, n, true);
-    for (var i = 0; i < n; i++) v.setUint8(44 + i, i % 4000 === 0 ? 129 : 128);
+    for (var i = 0; i < n; i++) v.setUint8(44 + i, 128);
     return new Blob([buf], { type: "audio/wav" });
   }
   function startKeepAlive() {
