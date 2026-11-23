@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meu Treino</title>
+<meta name="description" content="Treino PPL semanal com guia de execução e registro de cargas.">
+<meta name="theme-color" content="#0f151b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Meu Treino</h1>
+      <p class="sub">Push, Pull e Legs de segunda a sábado</p>
+    </div>
+    <button class="btn small" id="install" hidden>Instalar app</button>
+  </header>
+
+  <div class="seg" role="tablist" aria-label="Seções">
+    <button role="tab" id="v-treino" aria-selected="true" data-view="treino">Treino</button>
+    <button role="tab" id="v-hist" aria-selected="false" data-view="hist">Histórico</button>
+  </div>
+
+  <section id="treino">
+    <nav class="week" role="tablist" aria-label="Dias da semana" id="week"></nav>
+    <main id="day" style="margin-top:16px"></main>
+    <h2 class="sec">Regras da semana</h2>
+    <div class="rules">
+      <div class="rule"><b>Descanso entre séries</b><span>2 a 3 min nos exercícios principais. 1 a 1,5 min nos acessórios.</span></div>
+      <div class="rule"><b>Perto da falha</b><span>Pare 1 a 2 repetições antes de não conseguir mais, na maioria das séries.</span></div>
+      <div class="rule"><b>Progressão</b><span>Bateu o topo das repetições em todas as séries? Suba a carga na próxima sessão.</span></div>
+      <div class="rule"><b>Técnicas intensas</b><span>Drop set ou bi-set só no último exercício e de vez em quando.</span></div>
+      <div class="rule"><b>Se ficar pesado</b><span>Exaustão ou carga caindo por duas semanas: corte o sábado e faça 5 dias.</span></div>
+      <div class="rule"><b>Domingo</b><span>Descanso ou caminhada leve de 20 a 30 min.</span></div>
+    </div>
+  </section>
+
+  <section id="hist" hidden>
+    <div id="hist-body"></div>
+    <h2 class="sec">Seus dados</h2>
+    <div class="note">
+      <p style="margin:0 0 10px">Os registros ficam salvos neste aparelho. Exporte um backup de vez em quando para não perder se trocar de celular ou limpar os dados do navegador.</p>
+      <div class="data-box">
+        <button class="btn" id="export">Exportar backup</button>
+        <button class="btn" id="import">Importar backup</button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
