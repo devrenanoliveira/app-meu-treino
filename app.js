@@ -49,6 +49,7 @@
   }
   fixState();
   var current;
+  var drafts = {}, focus = {}, guideOpen = false, pip = null;
 
   function entries(key) { return state.logs[key] || []; }
   function todayEntry(key) { var t = todayISO(), a = entries(key); for (var i = 0; i < a.length; i++) if (a[i].d === t) return a[i]; return null; }
@@ -244,26 +245,67 @@
     if (keep) { var q = keep.play(); if (q && q.catch) q.catch(function () {}); } else startKeepAlive();
     tick();
   }
-  function refreshSetRows() {
-    if (!sess) return;
-    var day = findDay(current);
-    if (!day || day.id !== sess.dayId) return;
-    Array.prototype.forEach.call(document.querySelectorAll("#day .ex"), function (card) {
-      var key = card.getAttribute("data-key");
-      var it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
-      if (it) card.querySelector(".sets-row").innerHTML = setsRow(day, it);
+  function dayItem(day, key) { return day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0]; }
+  function focusIdx(day) { var i = focus[day.id] || 0; return Math.max(0, Math.min(day.items.length - 1, i)); }
+  function stepDone(day, it) {
+    var key = day.id + ":" + it[0], n = (sess && sess.dayId === day.id && sess.sets[key]) || 0;
+    return !!todayEntry(key) || (n > 0 && n >= setsOf(it[1]));
+  }
+  function renderStepper(day) {
+    var el = $("stepper");
+    if (!el) return;
+    var h = "", cur = focusIdx(day);
+    day.items.forEach(function (it, i) {
+      h += '<button class="step' + (i === cur ? " cur" : "") + (stepDone(day, it) ? " done" : "") + '" data-go="' + i + '" aria-label="Exercício ' + (i + 1) + '">' + (stepDone(day, it) ? "✓" : i + 1) + "</button>";
     });
+    el.innerHTML = h;
+  }
+  function refreshSetRows() {
+    var day = findDay(current);
+    if (!day || !day.items.length) return;
+    renderStepper(day);
+    var card = document.querySelector("#day .ex");
+    if (!card) return;
+    var it = dayItem(day, card.getAttribute("data-key"));
+    if (it) card.querySelector(".sets-row").innerHTML = setsRow(day, it);
+    var nx = document.querySelector("#day [data-nav='1']");
+    if (nx) nx.classList.toggle("go", stepDone(day, day.items[focusIdx(day)]));
+  }
+  /* Marca mais uma série do exercício e começa o descanso. */
+  function markSet(key) {
+    var d = findDay(sess.dayId), it = dayItem(d, key), total = setsOf(it[1]), n = sess.sets[key] || 0;
+    if (n >= total) return false;
+    sess.sets[key] = n + 1;
+    sess.order = sess.order || [];
+    sess.order.push(key);
+    sess.restStart = Date.now();
+    sess.restAlerted = false;
+    saveSess();
+    if (n + 1 >= total) toast("Exercício concluído. Deslize ou toque em Próximo");
+    return true;
   }
   function completeNextSet() {
     if (!sess || sess.pausedAt) return;
     var p = nextPending();
     if (!p) { toast("Todas as séries já foram marcadas"); return; }
-    sess.sets[p.key] = p.n + 1;
-    sess.order = sess.order || [];
-    sess.order.push(p.key);
-    sess.restStart = Date.now();
-    sess.restAlerted = false;
-    saveSess();
+    markSet(p.key);
+    refreshSetRows();
+    tick();
+  }
+  /* Botão grande "Série feita": usa o exercício em foco; se já terminou, pula para o próximo pendente. */
+  function hudDone() {
+    if (!sess || sess.pausedAt) return;
+    ensureAudio();
+    if (current !== sess.dayId) selectDay(sess.dayId);
+    var day = findDay(sess.dayId), it = day.items[focusIdx(day)], key = day.id + ":" + it[0];
+    if ((sess.sets[key] || 0) >= setsOf(it[1])) {
+      var p = nextPending();
+      if (!p) { toast("Todas as séries feitas. Toque em Finalizar"); return; }
+      key = p.key;
+      day.items.forEach(function (x, i) { if (day.id + ":" + x[0] === key) focus[day.id] = i; });
+      renderDay();
+    }
+    markSet(key);
     refreshSetRows();
     tick();
   }
@@ -276,27 +318,85 @@
     tick();
   }
 
+  function nowText() {
+    var d = findDay(sess.dayId), it = d.items[focus[d.id] || 0], key = it && d.id + ":" + it[0];
+    var n = it ? (sess.sets[key] || 0) : 0, total = it ? setsOf(it[1]) : 0;
+    if (it && n < total) return EX[it[0]].n + " · série " + (n + 1) + " de " + total;
+    var p = nextPending();
+    return p ? "Próximo: " + p.name + " · série " + (p.n + 1) + " de " + p.total : "Todas as séries feitas";
+  }
   function renderBar(el, rest) {
-    var bar = $("bar");
-    if (!sess) { bar.hidden = true; document.body.classList.remove("has-bar"); return; }
-    var target = state.settings.rest, d = findDay(sess.dayId);
+    var bar = $("hud");
+    if (!sess) {
+      bar.hidden = true;
+      document.title = "Meu Treino";
+      return;
+    }
+    var target = state.settings.rest, d = findDay(sess.dayId), paused = !!sess.pausedAt;
     bar.hidden = false;
-    document.body.classList.add("has-bar");
-    bar.className = "bar " + (d ? d.c : "");
-    $("bar-day").textContent = d ? d.title.split("·")[1].trim() : "";
-    $("bar-el").textContent = clock(el);
-    $("bar-rest").textContent = rest == null ? "--:--" : clock(rest);
-    $("bar-target").textContent = rest == null ? "ou toque na série feita" : "meta " + clock(target);
-    $("prog").style.width = (rest == null ? 0 : Math.min(100, rest / target * 100)) + "%";
-    bar.classList.toggle("ready", rest != null && rest >= target && !sess.pausedAt);
-    bar.classList.toggle("paused", !!sess.pausedAt);
-    $("bar-pause").textContent = sess.pausedAt ? "Retomar" : "Pausar";
-    if (sess.pausedAt) $("bar-target").textContent = "treino pausado";
-    $("bar-reset").textContent = rest == null ? "Iniciar descanso" : "Parar";
-    $("bar-reset").disabled = !!sess.pausedAt;
-    var needTray = state.settings.lock && !keep && !sess.pausedAt;
-    $("bar-tray").hidden = !needTray;
-    if (needTray) $("bar-tray-msg").textContent = "Timer da bandeja inativo" + (keepErr ? " (" + keepErr + ")" : "");
+    bar.className = "hud " + (d ? d.c : "");
+    $("hud-day").textContent = d ? "· " + d.title.split("·")[1].trim() : "";
+    $("hud-el").textContent = clock(el);
+    $("hud-rest").textContent = rest == null ? "--:--" : clock(rest);
+    $("hud-target").textContent = paused ? "treino pausado" : rest == null ? "toque em Série feita" : "meta " + clock(target);
+    $("hud-prog").style.width = (rest == null ? 0 : Math.min(100, rest / target * 100)) + "%";
+    bar.classList.toggle("ready", rest != null && rest >= target && !paused);
+    bar.classList.toggle("paused", paused);
+    $("hud-now").textContent = nowText();
+    $("hud-pause").textContent = paused ? "Retomar" : "Pausar";
+    $("hud-reset").textContent = rest == null ? "Descanso" : "Parar";
+    $("hud-reset").disabled = paused;
+    $("hud-done").disabled = paused;
+    var needTray = state.settings.lock && !keep && !paused;
+    $("hud-tray").hidden = !needTray;
+    if (needTray) $("hud-tray-msg").textContent = "Timer da bandeja inativo" + (keepErr ? " (" + keepErr + ")" : "");
+    document.title = paused ? "Pausado · Meu Treino" : (rest == null ? clock(el) : (rest >= target ? "Descansou! " : "Descanso ") + clock(rest)) + " · Meu Treino";
+    drawPip(el, rest);
+  }
+
+  /* ---------- timer flutuante (Picture-in-Picture, experimental) ---------- */
+  function pipSupported() {
+    return !!(document.pictureInPictureEnabled && window.HTMLVideoElement && HTMLVideoElement.prototype.requestPictureInPicture &&
+      window.HTMLCanvasElement && HTMLCanvasElement.prototype.captureStream);
+  }
+  function drawPip(el, rest) {
+    if (!pip || !sess) return;
+    var c = pip.canvas, g = c.getContext("2d"), target = state.settings.rest, paused = !!sess.pausedAt;
+    var ready = rest != null && rest >= target && !paused;
+    g.fillStyle = ready ? "#1f8a5b" : "#18212a";
+    g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = "#e8edf2";
+    g.textAlign = "center";
+    g.font = "20px sans-serif";
+    g.fillText(paused ? "Treino pausado" : ready ? "Descanso completo" : "Descanso", c.width / 2, 34);
+    g.font = "bold 84px sans-serif";
+    g.fillText(rest == null ? "--:--" : clock(rest), c.width / 2, 120);
+    g.font = "20px sans-serif";
+    g.fillText("Treino " + clock(el), c.width / 2, 156);
+  }
+  function startPip() {
+    if (!pipSupported()) { toast("Seu navegador não suporta o timer flutuante"); return; }
+    if (!sess) { toast("Inicie o treino primeiro"); return; }
+    if (document.pictureInPictureElement) { try { document.exitPictureInPicture(); } catch (e) {} return; }
+    try {
+      var canvas = document.createElement("canvas");
+      canvas.width = 320; canvas.height = 180;
+      var v = document.createElement("video");
+      v.muted = true; v.playsInline = true;
+      v.style.cssText = "position:fixed;width:2px;height:2px;opacity:.01;pointer-events:none;left:0;top:0";
+      v.srcObject = canvas.captureStream(5);
+      document.body.appendChild(v);
+      pip = { canvas: canvas, video: v };
+      tick();
+      v.play().then(function () { return v.requestPictureInPicture(); }).then(function () {
+        v.addEventListener("leavepictureinpicture", stopPip);
+      }).catch(function () { stopPip(); toast("Não foi possível abrir o timer flutuante"); });
+    } catch (e) { stopPip(); toast("Não foi possível abrir o timer flutuante"); }
+  }
+  function stopPip() {
+    if (!pip) return;
+    try { pip.video.pause(); pip.video.srcObject = null; pip.video.remove(); } catch (e) {}
+    pip = null;
   }
 
   function tick() {
@@ -343,6 +443,8 @@
     stopKeepAlive();
     releaseWake();
     closeNotifs();
+    try { if (document.pictureInPictureElement) document.exitPictureInPicture(); } catch (e) {}
+    stopPip();
     renderBar();
     renderDay();
     toast("Treino finalizado em " + clock(secs));
@@ -361,28 +463,24 @@
 
   function tapSet(btn) {
     var key = btn.getAttribute("data-set"), i = parseInt(btn.getAttribute("data-i"), 10);
-    var day = findDay(current), it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
+    var day = findDay(current);
     if (!sess) startSession(day.id);
     else if (sess.dayId !== day.id) { toast("Finalize o treino de " + findDay(sess.dayId).d + " antes"); return; }
     if (sess.pausedAt) { toast("Treino pausado. Toque em Retomar"); return; }
     var n = sess.sets[key] || 0;
     sess.order = sess.order || [];
     if (i === n) {
-      sess.sets[key] = n + 1;
-      sess.order.push(key);
-      sess.restStart = Date.now();
-      sess.restAlerted = false;
       ensureAudio();
+      markSet(key);
     } else if (i === n - 1) {
       sess.sets[key] = n - 1;
       var idx = sess.order.lastIndexOf(key);
       if (idx >= 0) sess.order.splice(idx, 1);
+      saveSess();
     } else {
       return;
     }
-    saveSess();
-    var row = btn.closest(".sets-row");
-    row.innerHTML = setsRow(day, it);
+    refreshSetRows();
     tick();
   }
 
@@ -398,7 +496,7 @@
 
   function exHTML(day, it) {
     var ex = EX[it[0]], key = day.id + ":" + it[0];
-    var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]);
+    var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), dr = drafts[key];
     var steps = ex.s.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
     var h = '<article class="ex" data-key="' + key + '" data-done="' + (!!te) + '">';
     h += '<div class="ex-top"><div class="ex-main"><div class="ex-name">' + esc(ex.n) + (te ? '<span class="badge">Salvo hoje</span>' : "") +
@@ -410,16 +508,16 @@
       if (topR && num(pe.r) >= topR) h += '<div class="goal">Você chegou a ' + topR + " reps. Tente subir a carga hoje.</div>";
       else if (topR) h += '<div class="goal">Meta: ' + topR + " reps em todas as séries. Ao conseguir, suba a carga.</div>";
     }
-    var w = te ? te.w : (pe ? pe.w : "");
-    var r = te ? te.r : "";
-    var drop = te ? /drop/i.test(te.n || "") : false;
+    var w = dr ? dr.w : te ? te.w : (pe ? pe.w : "");
+    var r = dr ? dr.r : te ? te.r : "";
+    var drop = dr ? dr.n : te ? /drop/i.test(te.n || "") : false;
     h += '<div class="log-in">' +
       '<label>Carga <input type="text" data-f="w" value="' + esc(w) + '" placeholder="kg ou placas" autocomplete="off"></label>' +
       '<label>Reps <input type="text" inputmode="numeric" data-f="r" value="' + esc(r) + '" placeholder="' + esc(pe && pe.r ? pe.r : "reps") + '" autocomplete="off"></label>' +
-      '<label><input type="checkbox" data-f="n"' + (drop ? " checked" : "") + '> Drop na última</label>' +
-      '<button class="btn primary small" data-save="' + key + '">' + (te ? "Atualizar" : "Salvar") + "</button>" +
+      '<label class="check"><input type="checkbox" data-f="n"' + (drop ? " checked" : "") + '> Drop na última série</label>' +
+      '<button class="btn primary big save" data-save="' + key + '">' + (te ? "Atualizar registro" : "Salvar carga e reps") + "</button>" +
       "</div></div>";
-    h += '<details><summary>Como executar</summary><div class="guide">' +
+    h += '<details' + (guideOpen ? " open" : "") + '><summary>Como executar</summary><div class="guide">' +
       '<div><h3>Passo a passo</h3><ol>' + steps + "</ol></div>" +
       '<div><h3>Exemplo</h3><p class="example">' + esc(ex.e) + "</p></div>" +
       '<div><h3>Erro comum</h3><p class="mistake">' + esc(ex.x) + "</p></div>" +
@@ -444,25 +542,43 @@
         '<p class="note" style="margin-top:12px">Sem treino de força. Se quiser, faça uma caminhada leve de 20 a 30 minutos. Segunda começa o ciclo de novo com o Push A.</p></div>';
       return;
     }
-    var total = 0;
-    day.items.forEach(function (it) { total += setsOf(it[1]); });
+    var total = 0, idx = focusIdx(day), it = day.items[idx];
+    day.items.forEach(function (x) { total += setsOf(x[1]); });
     var html = '<div class="' + day.c + '">' +
       '<div class="day-head"><div><h2>' + day.title + '</h2><div class="sub">' + day.sub + "</div></div>" +
       '<div class="chips"><span class="chip">' + total + ' séries</span><span class="chip">~' + Math.round(total * 3.2) + ' min</span>' +
       '<span class="chip on" id="chip-done"></span></div></div>';
-    if (!sess) html += '<div style="margin-top:12px"><button class="btn primary" id="start">Iniciar treino</button>' +
-      '<p class="sub" style="margin-top:6px">Depois de iniciar, toque no número de cada série ao terminá-la para começar o descanso.</p></div>';
-    html += '<div class="list">';
-    day.items.forEach(function (it) { html += exHTML(day, it); });
-    html += "</div></div>";
+    if (!sess) html += '<div style="margin-top:12px"><button class="btn primary big" id="start">Iniciar treino</button></div>';
+    html += '<div class="stepper" id="stepper"></div>';
+    html += '<div class="pos">Exercício ' + (idx + 1) + " de " + day.items.length + "</div>";
+    html += exHTML(day, it);
+    html += '<div class="nav2"><button class="btn" data-nav="-1"' + (idx === 0 ? " disabled" : "") + '>‹ Anterior</button>' +
+      '<button class="btn' + (stepDone(day, it) ? " go" : "") + '" data-nav="1"' + (idx === day.items.length - 1 ? " disabled" : "") + '>Próximo ›</button></div>';
+    html += "</div>";
     el.innerHTML = html;
+    renderStepper(day);
     updateChip(day);
+  }
+
+  function goTo(i) {
+    var day = findDay(current);
+    if (!day.items.length) return;
+    focus[day.id] = Math.max(0, Math.min(day.items.length - 1, i));
+    renderDay();
+    if (sess) tick();
+    window.scrollTo(0, 0);
   }
 
   function selectDay(id) {
     current = id;
+    var d = findDay(id);
+    if (sess && sess.dayId === id && focus[id] == null) {
+      var p = nextPending();
+      if (p) d.items.forEach(function (x, i) { if (d.id + ":" + x[0] === p.key) focus[id] = i; });
+    }
     renderWeek();
     renderDay();
+    if (sess) tick();
   }
 
   function saveEntry(card, key) {
@@ -477,14 +593,10 @@
     list.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
     state.logs[key] = list;
     persist(state);
-    var day = findDay(current), it = day.items.filter(function (x) { return day.id + ":" + x[0] === key; })[0];
-    var wasOpen = card.querySelector("details").open;
-    var tmp = document.createElement("div");
-    tmp.innerHTML = exHTML(day, it);
-    var fresh = tmp.firstChild;
-    fresh.querySelector("details").open = wasOpen;
-    card.parentNode.replaceChild(fresh, card);
-    updateChip(day);
+    delete drafts[key];
+    guideOpen = card.querySelector("details").open;
+    renderDay();
+    if (sess) tick();
     toast("Salvo");
   }
 
@@ -535,11 +647,12 @@
   }
 
   function showView(v) {
-    $("treino").hidden = v !== "treino";
-    $("hist").hidden = v !== "hist";
-    $("v-treino").setAttribute("aria-selected", v === "treino");
-    $("v-hist").setAttribute("aria-selected", v === "hist");
-    if (v === "hist") renderHist(); else renderDay();
+    ["treino", "hist", "ajustes"].forEach(function (id) { $(id).hidden = id !== v; });
+    Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-view") === v);
+    });
+    if (v === "hist") renderHist(); else if (v === "treino") renderDay(); else renderSettings();
+    window.scrollTo(0, 0);
   }
 
   /* ---------- ajustes do cronômetro ---------- */
@@ -550,6 +663,8 @@
     var p = ("Notification" in window) ? Notification.permission : "unsupported";
     $("notif-state").textContent = p === "granted" ? "Notificações ativadas" : p === "denied" ? "Notificações bloqueadas nas configurações do navegador" : p === "default" ? "Notificações desativadas" : "Este navegador não suporta notificações";
     $("set-notif").hidden = p !== "default";
+    $("pip-row").hidden = !pipSupported();
+    $("fit-note").hidden = !fitActive;
   }
   $("set-rest").addEventListener("change", function (e) {
     state.settings.rest = parseInt(e.target.value, 10) || 120;
@@ -567,6 +682,7 @@
     if (e.target.checked) { if (sess) { startKeepAlive(); tick(); } } else stopKeepAlive();
   });
   $("set-notif").addEventListener("click", function () { requestNotif(); });
+  $("set-pip").addEventListener("click", startPip);
 
   /* ---------- eventos ---------- */
   $("week").addEventListener("click", function (e) {
@@ -578,15 +694,43 @@
     if (s) { saveEntry(s.closest(".ex"), s.getAttribute("data-save")); return; }
     var c = e.target.closest("[data-set]");
     if (c) { tapSet(c); return; }
+    var g = e.target.closest("[data-go]");
+    if (g) { goTo(parseInt(g.getAttribute("data-go"), 10)); return; }
+    var nv = e.target.closest("[data-nav]");
+    if (nv) { goTo(focusIdx(findDay(current)) + parseInt(nv.getAttribute("data-nav"), 10)); return; }
     if (e.target.id === "start") startSession(current);
   });
-  document.querySelector(".seg").addEventListener("click", function (e) {
+  /* Guarda o que foi digitado (carga/reps) ao trocar de exercício, para não perder. */
+  $("day").addEventListener("input", function (e) {
+    var f = e.target.getAttribute && e.target.getAttribute("data-f");
+    var card = e.target.closest && e.target.closest(".ex");
+    if (!f || !card) return;
+    var key = card.getAttribute("data-key"), d = drafts[key] || (drafts[key] = {
+      w: card.querySelector('[data-f="w"]').value, r: card.querySelector('[data-f="r"]').value, n: card.querySelector('[data-f="n"]').checked
+    });
+    d.w = card.querySelector('[data-f="w"]').value;
+    d.r = card.querySelector('[data-f="r"]').value;
+    d.n = card.querySelector('[data-f="n"]').checked;
+  });
+  $("day").addEventListener("toggle", function (e) { if (e.target.tagName === "DETAILS") guideOpen = e.target.open; }, true);
+  /* Deslizar para o lado troca de exercício. */
+  (function () {
+    var x0 = 0, y0 = 0;
+    $("day").addEventListener("touchstart", function (e) { var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    $("day").addEventListener("touchend", function (e) {
+      if (e.target.closest && e.target.closest("input, details")) return;
+      var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 45) goTo(focusIdx(findDay(current)) + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  })();
+  $("tabs").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-view]");
     if (b) showView(b.getAttribute("data-view"));
   });
-  $("bar-end").addEventListener("click", endSession);
-  $("bar-pause").addEventListener("click", function () { if (sess && sess.pausedAt) resumeSession(); else pauseSession(); });
-  $("bar-reset").addEventListener("click", function () {
+  $("hud-end").addEventListener("click", endSession);
+  $("hud-done").addEventListener("click", hudDone);
+  $("hud-pause").addEventListener("click", function () { if (sess && sess.pausedAt) resumeSession(); else pauseSession(); });
+  $("hud-reset").addEventListener("click", function () {
     if (!sess || sess.pausedAt) return;
     if (sess.restStart) sess.restStart = null;
     else { sess.restStart = Date.now(); ensureAudio(); }
@@ -594,7 +738,7 @@
     saveSess();
     tick();
   });
-  $("bar-tray-btn").addEventListener("click", function () {
+  $("hud-tray-btn").addEventListener("click", function () {
     ensureAudio();
     startKeepAlive();
     tick();
@@ -624,7 +768,7 @@
         fixState();
         persist(state);
         renderSettings();
-        showView($("hist").hidden ? "treino" : "hist");
+        showView(!$("hist").hidden ? "hist" : !$("ajustes").hidden ? "ajustes" : "treino");
         toast("Backup importado");
       } catch (err) {
         toast("Arquivo de backup inválido");
@@ -658,6 +802,22 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   }
+
+  /* Chrome em "Site para computador" ignora o viewport e usa ~980px: amplia a página para caber na tela. */
+  var fitActive = false;
+  function fit() {
+    var root = document.documentElement;
+    try {
+      root.style.zoom = "";
+      var sw = screen.width, iw = window.innerWidth;
+      var touch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || (navigator.maxTouchPoints || 0) > 0;
+      if (touch && sw > 0 && sw < 700 && iw / sw > 1.25) { root.style.zoom = (iw / sw).toFixed(3); fitActive = true; }
+      else fitActive = false;
+    } catch (e) { fitActive = false; }
+  }
+  fit();
+  window.addEventListener("resize", function () { fit(); });
+  window.addEventListener("orientationchange", function () { setTimeout(fit, 300); });
 
   renderSettings();
   selectDay(sess ? sess.dayId : JS_DAY_TO_ID[new Date().getDay()]);

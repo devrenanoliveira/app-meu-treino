@@ -8,18 +8,25 @@ App web instalável (PWA) com o treino PPL semanal, guia de execução de cada e
 2. Toque em **Instalar app** (botão no topo da página ou menu ⋮ do Chrome).
 3. O app ganha ícone na tela inicial e funciona sem internet.
 
+## Telas
+
+- **Treino**: um exercício por vez. Toque nos números do topo, em Anterior/Próximo ou deslize para o lado para trocar.
+- **Histórico**: evolução de carga e treinos concluídos.
+- **Ajustes**: descanso, tela ligada, notificações, timer flutuante, regras da semana e backup.
+
 ## Cronômetros
 
-- **Iniciar treino** liga o contador do treino e uma barra fixa no rodapé.
-- Toque no número de cada **série** ao terminá-la (ou em **Iniciar descanso** na barra): o descanso começa a contar e o app avisa (vibração, som e notificação) ao completar o tempo escolhido (padrão 2:00).
-- O timer também aparece na tela de bloqueio e nas notificações do Android (ajustes do cronômetro).
-- **Pausar/Retomar** congela os dois contadores (barra do rodapé ou botão play/pause da notificação).
-- Na notificação, os botões de faixa funcionam como atalhos: **próxima** conclui a próxima série e **anterior** desfaz a última.
-- **Finalizar** (barra do rodapé) salva a duração e as séries no histórico.
+- **Iniciar treino** liga o painel de timers fixo no topo (descanso grande e tempo total do treino), visível em todas as abas.
+- **Série feita** (botão grande do painel) ou o número da série no cartão começa o descanso. O app avisa (vibração, som e notificação) ao completar o tempo escolhido (padrão 2:00).
+- O timer também aparece na tela de bloqueio e nas notificações do Android, e o título da aba mostra o descanso.
+- **Timer flutuante** (Ajustes, experimental): mini janela por cima de outros apps via Picture-in-Picture.
+- **Pausar/Retomar** congela os dois contadores. Na notificação, **próxima** conclui a próxima série e **anterior** desfaz a última.
+- **Finalizar** salva a duração e as séries no histórico.
+- Se o Chrome estiver em "Site para computador", o app amplia a página sozinho para caber na tela.
 
 ## Dados
 
-Os registros ficam salvos no próprio aparelho (localStorage). Use **Histórico > Exportar backup** de vez em quando.
+Os registros ficam salvos no próprio aparelho (localStorage). Use **Ajustes > Exportar backup** de vez em quando.
 
 ## Arquivos
 

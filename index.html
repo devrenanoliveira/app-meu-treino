@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
 <title>Meu Treino</title>
 <meta name="description" content="Treino PPL semanal com guia de execução e registro de cargas.">
 <meta name="theme-color" content="#0f151b">
@@ -12,40 +12,70 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
+<!-- Painel dos timers: fixo no topo enquanto o treino está em andamento -->
+<div class="hud" id="hud" hidden>
+  <div class="hud-top">
+    <div class="hud-cell">
+      <span class="hud-k">Descanso</span>
+      <b class="hud-big" id="hud-rest">--:--</b>
+      <span class="hud-s" id="hud-target"></span>
+    </div>
+    <div class="hud-cell right">
+      <span class="hud-k">Treino <span id="hud-day"></span></span>
+      <b class="hud-mid" id="hud-el">00:00</b>
+    </div>
+  </div>
+  <div class="prog"><i id="hud-prog"></i></div>
+  <div class="hud-now" id="hud-now"></div>
+  <div class="hud-btns">
+    <button class="btn hud-done" id="hud-done">Série feita</button>
+    <button class="btn" id="hud-pause">Pausar</button>
+    <button class="btn" id="hud-reset">Parar</button>
+    <button class="btn" id="hud-end">Finalizar</button>
+  </div>
+  <div class="hud-tray" id="hud-tray" hidden>
+    <span id="hud-tray-msg"></span>
+    <button class="btn small" id="hud-tray-btn">Ativar bandeja</button>
+  </div>
+</div>
+
+<div class="app">
   <header class="top">
     <div>
       <h1>Meu Treino</h1>
-      <p class="sub">Push, Pull e Legs de segunda a sábado</p>
+      <p class="sub">Push, Pull e Legs · segunda a sábado</p>
     </div>
-    <button class="btn small" id="install" hidden>Instalar app</button>
+    <button class="btn small" id="install" hidden>Instalar</button>
   </header>
-
-  <div class="seg" role="tablist" aria-label="Seções">
-    <button role="tab" id="v-treino" aria-selected="true" data-view="treino">Treino</button>
-    <button role="tab" id="v-hist" aria-selected="false" data-view="hist">Histórico</button>
-  </div>
 
   <section id="treino">
     <nav class="week" role="tablist" aria-label="Dias da semana" id="week"></nav>
-    <details class="settings">
-      <summary>Ajustes do cronômetro</summary>
-      <div class="settings-body">
-        <label>Descanso entre séries
-          <select id="set-rest">
-            <option value="60">1:00</option>
-            <option value="90">1:30</option>
-            <option value="120">2:00</option>
-            <option value="150">2:30</option>
-            <option value="180">3:00</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" id="set-wake"> Manter a tela ligada durante o treino</label>
-        <label class="check"><input type="checkbox" id="set-lock"> Mostrar o timer na tela de bloqueio e nas notificações</label>
-        <div class="notif-row"><span id="notif-state"></span><button class="btn small" id="set-notif" hidden>Ativar notificações</button></div>
-      </div>
-    </details>
-    <main id="day" style="margin-top:16px"></main>
+    <main id="day"></main>
+  </section>
+
+  <section id="hist" hidden>
+    <div id="hist-body"></div>
+  </section>
+
+  <section id="ajustes" hidden>
+    <h2 class="sec">Cronômetro</h2>
+    <div class="card settings-body">
+      <label>Descanso entre séries
+        <select id="set-rest">
+          <option value="60">1:00</option>
+          <option value="90">1:30</option>
+          <option value="120">2:00</option>
+          <option value="150">2:30</option>
+          <option value="180">3:00</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="set-wake"> Manter a tela ligada durante o treino</label>
+      <label class="check"><input type="checkbox" id="set-lock"> Mostrar o timer na tela de bloqueio e nas notificações</label>
+      <div class="notif-row"><span id="notif-state"></span><button class="btn small" id="set-notif" hidden>Ativar notificações</button></div>
+      <div class="notif-row" id="pip-row" hidden><span>Mini janela do timer sobre outros apps (experimental)</span><button class="btn small" id="set-pip">Timer flutuante</button></div>
+      <p class="note-s" id="fit-note" hidden>O Chrome está exibindo este site no modo computador, então ajustei o tamanho sozinho. Para resolver de vez: menu ⋮ do Chrome e desmarque "Site para computador".</p>
+    </div>
+
     <h2 class="sec">Regras da semana</h2>
     <div class="rules">
       <div class="rule"><b>Descanso entre séries</b><span>2 a 3 min nos exercícios principais. 1 a 1,5 min nos acessórios.</span></div>
@@ -55,12 +85,9 @@
       <div class="rule"><b>Se ficar pesado</b><span>Exaustão ou carga caindo por duas semanas: corte o sábado e faça 5 dias.</span></div>
       <div class="rule"><b>Domingo</b><span>Descanso ou caminhada leve de 20 a 30 min.</span></div>
     </div>
-  </section>
 
-  <section id="hist" hidden>
-    <div id="hist-body"></div>
     <h2 class="sec">Seus dados</h2>
-    <div class="note">
+    <div class="card">
       <p style="margin:0 0 10px">Os registros ficam salvos neste aparelho. Exporte um backup de vez em quando para não perder se trocar de celular ou limpar os dados do navegador.</p>
       <div class="data-box">
         <button class="btn" id="export">Exportar backup</button>
@@ -70,21 +97,12 @@
     </div>
   </section>
 </div>
-<div class="bar" id="bar" hidden>
-  <div class="bar-row">
-    <div><span class="bar-k">Treino</span> <b id="bar-el">00:00</b> <span class="bar-day" id="bar-day"></span></div>
-    <div class="bar-btns"><button class="btn small" id="bar-pause">Pausar</button><button class="btn small" id="bar-end">Finalizar</button></div>
-  </div>
-  <div class="bar-row">
-    <div><span class="bar-k">Descanso</span> <b id="bar-rest">--:--</b> <span class="bar-target" id="bar-target"></span></div>
-    <button class="btn small" id="bar-reset">Iniciar descanso</button>
-  </div>
-  <div class="bar-row" id="bar-tray" hidden>
-    <span class="bar-target" id="bar-tray-msg"></span>
-    <button class="btn small" id="bar-tray-btn">Ativar bandeja</button>
-  </div>
-  <div class="prog"><i id="prog"></i></div>
-</div>
+
+<nav class="tabs" id="tabs" aria-label="Seções">
+  <button data-view="treino" aria-selected="true"><i>🏋️</i>Treino</button>
+  <button data-view="hist" aria-selected="false"><i>📈</i>Histórico</button>
+  <button data-view="ajustes" aria-selected="false"><i>⚙️</i>Ajustes</button>
+</nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="data.js"></script>
