@@ -615,10 +615,12 @@
   function renderHist() {
     var html = "";
     if (state.sessions.length) {
-      html += '<h2 class="sec">Treinos concluídos</h2><div class="slot"><table><thead><tr><th>Data</th><th>Treino</th><th>Duração</th><th>Séries</th></tr></thead><tbody>';
-      state.sessions.slice(-20).reverse().forEach(function (s) {
+      html += '<h2 class="sec">Treinos concluídos</h2><div class="slot"><table><thead><tr><th>Data</th><th>Treino</th><th>Duração</th><th>Séries</th><th></th></tr></thead><tbody>';
+      var base = Math.max(0, state.sessions.length - 20);
+      state.sessions.slice(-20).reverse().forEach(function (s, ri, arr) {
+        var si = base + arr.length - 1 - ri;
         var d = findDay(s.day);
-        html += "<tr><td>" + fmt(s.d) + "</td><td>" + esc(d ? d.title.split("·")[1].trim() : s.day) + "</td><td>" + clock(s.secs) + "</td><td>" + (s.sets || 0) + "</td></tr>";
+        html += "<tr><td>" + fmt(s.d) + "</td><td>" + esc(d ? d.title.split("·")[1].trim() : s.day) + "</td><td>" + clock(s.secs) + "</td><td>" + (s.sets || 0) + '</td><td><button class="del" data-del-sess="' + si + '" aria-label="Apagar treino">✕</button></td></tr>';
       });
       html += "</tbody></table></div>";
     }
@@ -631,9 +633,9 @@
         html += '<details class="slot"><summary><span class="nm">' + esc(ex.n) +
           '<span class="meta">' + (last ? fmt(last.d) + ": " + esc(last.w) + (last.r ? " · " + esc(last.r) : "") : "Sem registros ainda") + "</span></span>" + spark(list) + "</summary>";
         if (list.length) {
-          html += "<table><thead><tr><th>Data</th><th>Carga</th><th>Reps</th><th>Obs.</th></tr></thead><tbody>";
+          html += "<table><thead><tr><th>Data</th><th>Carga</th><th>Reps</th><th>Obs.</th><th></th></tr></thead><tbody>";
           list.slice().reverse().forEach(function (e) {
-            html += "<tr><td>" + fmt(e.d) + "</td><td>" + esc(e.w) + "</td><td>" + esc(e.r) + "</td><td>" + esc(e.n) + "</td></tr>";
+            html += "<tr><td>" + fmt(e.d) + "</td><td>" + esc(e.w) + "</td><td>" + esc(e.r) + "</td><td>" + esc(e.n) + '</td><td><button class="del" data-del-log="' + key + '" data-d="' + e.d + '" aria-label="Apagar registro">✕</button></td></tr>';
           });
           html += "</tbody></table>";
         } else {
@@ -643,6 +645,10 @@
       });
       html += "</div>";
     });
+    html += '<h2 class="sec">Limpar histórico</h2><div class="card"><div class="data-box">' +
+      '<button class="btn" id="clr-sess">Apagar treinos concluídos</button>' +
+      '<button class="btn" id="clr-all">Apagar tudo</button></div>' +
+      '<p class="note-s" style="margin-top:8px">Você também pode apagar linhas soltas com o ✕. "Apagar tudo" remove todas as cargas e treinos salvos.</p></div>';
     $("hist-body").innerHTML = html;
   }
 
@@ -723,6 +729,28 @@
       if (Math.abs(dx) > 70 && Math.abs(dy) < 45) goTo(focusIdx(findDay(current)) + (dx < 0 ? 1 : -1));
     }, { passive: true });
   })();
+  $("hist-body").addEventListener("click", function (e) {
+    var t = e.target.closest("button");
+    if (!t) return;
+    if (t.hasAttribute("data-del-sess")) {
+      if (!confirm("Apagar este treino do histórico?")) return;
+      state.sessions.splice(parseInt(t.getAttribute("data-del-sess"), 10), 1);
+    } else if (t.hasAttribute("data-del-log")) {
+      if (!confirm("Apagar este registro?")) return;
+      var k = t.getAttribute("data-del-log"), dd = t.getAttribute("data-d");
+      state.logs[k] = (state.logs[k] || []).filter(function (x) { return x.d !== dd; });
+      if (!state.logs[k].length) delete state.logs[k];
+    } else if (t.id === "clr-sess") {
+      if (!state.sessions.length || !confirm("Apagar todos os treinos concluídos? As cargas continuam salvas.")) return;
+      state.sessions = [];
+    } else if (t.id === "clr-all") {
+      if (!confirm("Apagar TODAS as cargas e treinos salvos? Não dá para desfazer.")) return;
+      state.logs = {}; state.sessions = []; drafts = {};
+    } else return;
+    persist(state);
+    renderHist();
+    toast("Apagado");
+  });
   $("tabs").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-view]");
     if (b) showView(b.getAttribute("data-view"));

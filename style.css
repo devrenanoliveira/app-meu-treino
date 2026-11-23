@@ -174,3 +174,6 @@ th { color: var(--muted); font-weight: 600; }
 .toast.show { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
 @media (max-width: 340px) { .hud-big { font-size: 46px; } .set { width: 50px; height: 50px; } }
+
+.del { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 16px; width: 40px; height: 40px; cursor: pointer; border-radius: 8px; }
+.del:active { background: var(--line); }
