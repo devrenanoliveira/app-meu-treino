@@ -215,3 +215,6 @@ th { color: var(--muted); font-weight: 600; }
 .tech { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--muted); }
 .tech select { font: inherit; font-size: 15px; padding: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); max-width: 62%; }
 .bi-name { width: 100%; font: inherit; font-size: 16px; padding: 6px 10px; min-height: 46px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.srow.bi-r { margin-top: -4px; }
+.srow.bi-r b { color: var(--ink); }
+.srow.bi-r input { background: color-mix(in srgb, var(--c) 6%, var(--bg)); }

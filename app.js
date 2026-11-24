@@ -54,6 +54,7 @@
         (e.s || []).forEach(function (x) { if (x.r && !/^\d+$/.test(String(x.r))) x.r = digits(x.r); });
         if (e.dr && e.dr.r) e.dr.r = digits(e.dr.r);
         if (e.bs && e.bs.r) e.bs.r = digits(e.bs.r);
+        if (e.bs && e.bs.s) e.bs.s.forEach(function (x) { if (x.r && !/^\d+$/.test(String(x.r))) x.r = digits(x.r); });
       });
     });
     if (!state.swaps || typeof state.swaps !== "object") state.swaps = { d: "", map: {} };
@@ -549,7 +550,10 @@
       t = e.s.map(function (x) { return (x.w || "?") + " × " + (x.r || "?"); }).join(" · ");
     } else t = (e.w || "") + (e.r ? " × " + e.r : "");
     if (e.dr && (e.dr.w || e.dr.r)) t += " ↓ drop " + (e.dr.w || "?") + " × " + (e.dr.r || "?");
-    if (e.bs && (e.bs.x || e.bs.w || e.bs.r)) t += " + bi-set " + (e.bs.x ? e.bs.x + " " : "") + (e.bs.w || "?") + " × " + (e.bs.r || "?");
+    if (e.bs) {
+      var bl = e.bs.s ? e.bs.s.filter(function (x) { return x.w || x.r; }).map(function (x) { return (x.w || "?") + " × " + (x.r || "?"); }).join(" · ") : (e.bs.w || e.bs.r ? (e.bs.w || "?") + " × " + (e.bs.r || "?") : "");
+      if (bl || e.bs.x) t += " + bi-set " + (e.bs.x ? e.bs.x + ": " : "") + bl;
+    }
     return t;
   }
   function bestReps(e) { return e.rm || num(e.r) || 0; }
@@ -599,17 +603,21 @@
     var ws = card.querySelectorAll('[data-f="w"]'), rs = card.querySelectorAll('[data-f="r"]'), s = [];
     for (var i = 0; i < ws.length; i++) s.push({ w: ws[i].value, r: rs[i].value });
     var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
-    return { s: s, t: g("t"), dw: g("dw"), dr: g("dr"), bx: g("bx"), bw: g("bw"), br: g("br") };
+    var bws = card.querySelectorAll('[data-f="bw"]'), brs = card.querySelectorAll('[data-f="br"]'), b = [];
+    for (var j = 0; j < bws.length; j++) b.push({ w: bws[j].value, r: brs[j].value });
+    return { s: s, t: g("t"), dw: g("dw"), dr: g("dr"), bx: g("bx"), b: b };
   }
 
   function exHTML(day, it) {
     var ex = EX[it[0]], key = day.id + ":" + it[0], idx = day.items.indexOf(it);
     var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), total = setsOf(it[1]), dr = drafts[key];
     var fields = dr ? dr.s : initialFields(total, te, pe);
-    var tech = dr ? dr.t : te ? (/drop/i.test(te.n || "") ? "drop" : /bi/i.test(te.n || "") ? "bi" : "") : "";
+    var tech = dr ? dr.t : te ? (/drop/i.test(te.n || "") ? "drop" : /todas/i.test(te.n || "") ? "biall" : /bi/i.test(te.n || "") ? "bi" : "") : "";
     var dw = dr ? dr.dw : te && te.dr ? te.dr.w || "" : "", drr = dr ? dr.dr : te && te.dr ? te.dr.r || "" : "";
-    var bs = te && te.bs ? te.bs : {};
-    var bx = dr ? dr.bx : bs.x || "", bw = dr ? dr.bw : bs.w || "", br = dr ? dr.br : bs.r || "";
+    var bs = te && te.bs ? te.bs : {}, bfields = [];
+    for (var q = 0; q < total; q++) bfields.push({ w: "", r: "" });
+    if (dr) bfields = dr.b; else if (bs.s) bs.s.forEach(function (x, q2) { if (bfields[q2]) bfields[q2] = x; }); else if (bs.w || bs.r) bfields[total - 1] = { w: bs.w || "", r: bs.r || "" };
+    var bx = dr ? dr.bx : bs.x || "";
     var steps = ex.s.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
     var h = '<article class="ex" data-key="' + key + '" data-done="' + (!!te) + '">';
     h += '<div class="ex-top"><div class="ex-main"><div class="ex-name">' + esc(ex.n) + (te ? '<span class="badge">Salvo hoje</span>' : "") +
@@ -628,15 +636,17 @@
       var ph = (pe && pe.s && pe.s[i] && pe.s[i].r) || (pe && pe.r) || "reps";
       h += '<div class="srow"><b>' + (i + 1) + '</b><input type="text" data-f="w" data-i="' + i + '" value="' + esc(f.w) + '" placeholder="kg ou placas" autocomplete="off">' +
         '<input type="text" inputmode="numeric" data-f="r" data-i="' + i + '" value="' + esc(f.r) + '" placeholder="' + esc(ph) + '" autocomplete="off"></div>';
+      var bf = bfields[i] || { w: "", r: "" }, showB = tech === "biall" || (tech === "bi" && i === total - 1);
+      h += '<div class="srow bi-r" data-bi="' + i + '"' + (showB ? "" : " hidden") + '><b>+</b><input type="text" data-f="bw" data-i="' + i + '" value="' + esc(bf.w) + '" placeholder="carga bi-set" autocomplete="off">' +
+        '<input type="text" inputmode="numeric" data-f="br" data-i="' + i + '" value="' + esc(bf.r) + '" placeholder="reps bi-set" autocomplete="off"></div>';
     }
-    h += '<label class="tech">Técnica na última série<select data-f="t"><option value=""' + (tech === "" ? " selected" : "") + '>Nenhuma</option>' +
-      '<option value="drop"' + (tech === "drop" ? " selected" : "") + '>Drop set (baixar a carga)</option>' +
-      '<option value="bi"' + (tech === "bi" ? " selected" : "") + '>Bi-set (outro exercício direto)</option></select></label>';
+    h += '<label class="tech">Técnica<select data-f="t"><option value=""' + (tech === "" ? " selected" : "") + '>Nenhuma</option>' +
+      '<option value="drop"' + (tech === "drop" ? " selected" : "") + '>Drop set na última série</option>' +
+      '<option value="bi"' + (tech === "bi" ? " selected" : "") + '>Bi-set só na última série</option>' +
+      '<option value="biall"' + (tech === "biall" ? " selected" : "") + '>Bi-set em todas as séries</option></select></label>';
     h += '<div class="srow drop" id="drop-row"' + (tech === "drop" ? "" : " hidden") + '><b>↓</b><input type="text" data-f="dw" value="' + esc(dw) + '" placeholder="carga do drop" autocomplete="off">' +
       '<input type="text" inputmode="numeric" data-f="dr" value="' + esc(drr) + '" placeholder="reps do drop" autocomplete="off"></div>';
-    h += '<div id="bi-row"' + (tech === "bi" ? "" : " hidden") + '><input type="text" class="bi-name" data-f="bx" value="' + esc(bx) + '" placeholder="Exercício do bi-set (ex.: Tríceps francês)" autocomplete="off">' +
-      '<div class="srow drop"><b>+</b><input type="text" data-f="bw" value="' + esc(bw) + '" placeholder="carga" autocomplete="off">' +
-      '<input type="text" inputmode="numeric" data-f="br" value="' + esc(br) + '" placeholder="reps" autocomplete="off"></div></div>';
+    h += '<input type="text" class="bi-name" id="bi-name" data-f="bx" value="' + esc(bx) + '" placeholder="Exercício do bi-set (ex.: Tríceps francês na polia)" autocomplete="off"' + (tech === "bi" || tech === "biall" ? "" : " hidden") + '>';
     h += '<button class="btn primary big save" data-save="' + key + '">' + (te ? "Atualizar registro" : "Salvar séries") + "</button>";
     h += '<div class="row2">' + (pe ? '<button class="btn small" data-copyprev="' + key + '">Copiar última vez</button>' : "") +
       '<button class="btn small" data-swap="' + key + '">Trocar exercício</button>' +
@@ -760,9 +770,12 @@
     var firstW = "", rs = [], rm = 0;
     sets.forEach(function (x) { if (!firstW && x.w) firstW = x.w; if (x.r) { rs.push(x.r); rm = Math.max(rm, num(x.r) || 0); } });
     var list = state.logs[key] || [];
-    var t = todayISO(), entry = { d: t, w: firstW, r: rs.join("/"), rm: rm, n: c.t === "drop" ? "drop na última" : c.t === "bi" ? "bi-set" : "", s: sets }, found = false;
+    var t = todayISO(), entry = { d: t, w: firstW, r: rs.join("/"), rm: rm, n: c.t === "drop" ? "drop na última" : c.t === "bi" ? "bi-set na última" : c.t === "biall" ? "bi-set em todas as séries" : "", s: sets }, found = false;
     if (c.t === "drop" && (c.dw.trim() || c.dr.trim())) entry.dr = { w: c.dw.trim(), r: c.dr.trim() };
-    if (c.t === "bi" && (c.bx.trim() || c.bw.trim() || c.br.trim())) entry.bs = { x: c.bx.trim(), w: c.bw.trim(), r: c.br.trim() };
+    if (c.t === "bi" || c.t === "biall") {
+      var bsets = c.b.map(function (x, q) { var on = c.t === "biall" || q === c.b.length - 1; return on ? { w: x.w.trim(), r: x.r.trim() } : { w: "", r: "" }; });
+      if (c.bx.trim() || bsets.some(function (x) { return x.w || x.r; })) entry.bs = { x: c.bx.trim(), s: bsets };
+    }
     for (var i = 0; i < list.length; i++) if (list[i].d === t) { list[i] = entry; found = true; }
     if (!found) list.push(entry);
     list.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
@@ -1046,9 +1059,10 @@
   });
   $("day").addEventListener("change", function (e) {
     if (e.target.getAttribute && e.target.getAttribute("data-f") === "t") {
-      var card = e.target.closest(".ex");
-      $("drop-row").hidden = e.target.value !== "drop";
-      $("bi-row").hidden = e.target.value !== "bi";
+      var card = e.target.closest(".ex"), v = e.target.value, rows = card.querySelectorAll("[data-bi]");
+      $("drop-row").hidden = v !== "drop";
+      $("bi-name").hidden = v !== "bi" && v !== "biall";
+      Array.prototype.forEach.call(rows, function (r, i) { r.hidden = !(v === "biall" || (v === "bi" && i === rows.length - 1)); });
       drafts[card.getAttribute("data-key")] = collect(card);
     }
   });
@@ -1150,7 +1164,8 @@
         var base = [e.d, day ? day.title : p[0], ex ? ex.n : p[1]];
         if (e.s && e.s.length) e.s.forEach(function (x, i) { rows.push(base.concat([i + 1, x.w, x.r, i === e.s.length - 1 ? e.n : ""])); });
         if (e.dr) rows.push(base.concat(["drop", e.dr.w, e.dr.r, ""]));
-        if (e.bs) rows.push(base.concat(["bi-set", e.bs.w, e.bs.r, e.bs.x]));
+        if (e.bs && e.bs.s) e.bs.s.forEach(function (x, i) { if (x.w || x.r) rows.push(base.concat(["bi-set " + (i + 1), x.w, x.r, e.bs.x])); });
+        else if (e.bs) rows.push(base.concat(["bi-set", e.bs.w, e.bs.r, e.bs.x]));
         else rows.push(base.concat(["", e.w, e.r, e.n]));
       });
     });
