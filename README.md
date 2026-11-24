@@ -11,8 +11,11 @@ App web instalável (PWA) com o treino PPL semanal, guia de execução de cada e
 ## Telas
 
 - **Treino**: um exercício por vez. Toque nos números do topo, em Anterior/Próximo ou deslize para o lado para trocar.
-- **Histórico**: evolução de carga e treinos concluídos.
-- **Ajustes**: descanso, tela ligada, notificações, timer flutuante, regras da semana e backup.
+- **Registro por série**: carga e reps de cada série, com a última vez já preenchida, sugestão de carga (quando você bate o topo das reps), botão Copiar última vez e aquecimento calculado.
+- **Trocar exercício**: substitui um exercício só por hoje (o plano não muda).
+- **Histórico**: resumo da semana (treinos, séries, tempo, séries por grupo muscular, dias seguidos), gráfico de evolução e recordes por exercício.
+- **Corpo**: peso e medidas com gráfico.
+- **Ajustes**: descanso (automático por exercício ou fixo), tela ligada, notificações, timer flutuante, lembretes no calendário, regras da semana, backup e CSV.
 
 ## Cronômetros
 

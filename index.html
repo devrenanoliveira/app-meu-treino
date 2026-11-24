@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <!-- Painel dos timers: fixo no topo enquanto o treino está em andamento -->
@@ -57,18 +57,26 @@
     <div id="hist-body"></div>
   </section>
 
+  <section id="corpo" hidden>
+    <div id="corpo-body"></div>
+  </section>
+
   <section id="ajustes" hidden>
     <h2 class="sec">Cronômetro</h2>
     <div class="card settings-body">
       <label>Descanso entre séries
-        <select id="set-rest">
-          <option value="60">1:00</option>
-          <option value="90">1:30</option>
-          <option value="120">2:00</option>
-          <option value="150">2:30</option>
-          <option value="180">3:00</option>
+        <select id="set-mode">
+          <option value="auto">Automático por exercício</option>
+          <option value="fixed">Tempo fixo</option>
         </select>
       </label>
+      <div id="rest-auto" class="stack">
+        <label>Exercícios principais (os 2 primeiros do dia)<select id="set-main"></select></label>
+        <label>Acessórios<select id="set-acc"></select></label>
+      </div>
+      <div id="rest-fixed" class="stack" hidden>
+        <label>Descanso fixo<select id="set-rest"></select></label>
+      </div>
       <label class="check"><input type="checkbox" id="set-wake"> Manter a tela ligada durante o treino</label>
       <label class="check"><input type="checkbox" id="set-lock"> Mostrar o timer na tela de bloqueio e nas notificações</label>
       <div class="notif-row"><span id="notif-state"></span><button class="btn small" id="set-notif" hidden>Ativar notificações</button></div>
@@ -86,6 +94,13 @@
       <div class="rule"><b>Domingo</b><span>Descanso ou caminhada leve de 20 a 30 min.</span></div>
     </div>
 
+    <h2 class="sec">Lembrete do treino</h2>
+    <div class="card">
+      <p style="margin:0 0 10px">Cria lembretes semanais no seu calendário (segunda a sábado), 10 minutos antes. O calendário do celular avisa mesmo com o app fechado.</p>
+      <label class="row-l">Horário do treino <input type="time" id="rem-time" value="18:00"></label>
+      <button class="btn" id="rem-ics" style="margin-top:10px">Criar lembretes no calendário</button>
+    </div>
+
     <h2 class="sec">Aplicativo</h2>
     <div class="card">
       <p style="margin:0 0 10px">Se uma melhoria não apareceu, toque abaixo. Limpa a cópia guardada do app e recarrega. Suas cargas e treinos não são apagados.</p>
@@ -97,6 +112,7 @@
       <p style="margin:0 0 10px">Os registros ficam salvos neste aparelho. Exporte um backup de vez em quando para não perder se trocar de celular ou limpar os dados do navegador.</p>
       <div class="data-box">
         <button class="btn" id="export">Exportar backup</button>
+        <button class="btn" id="export-csv">Exportar CSV</button>
         <button class="btn" id="import">Importar backup</button>
         <input type="file" id="file" accept="application/json,.json" hidden>
       </div>
@@ -107,11 +123,12 @@
 <nav class="tabs" id="tabs" aria-label="Seções">
   <button data-view="treino" aria-selected="true"><i>🏋️</i>Treino</button>
   <button data-view="hist" aria-selected="false"><i>📈</i>Histórico</button>
+  <button data-view="corpo" aria-selected="false"><i>⚖️</i>Corpo</button>
   <button data-view="ajustes" aria-selected="false"><i>⚙️</i>Ajustes</button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="data.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="data.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
