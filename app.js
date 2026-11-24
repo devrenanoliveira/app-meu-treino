@@ -535,10 +535,12 @@
   }
   function fmtNum(n) { return (Math.round(n * 10) / 10).toString().replace(".", ","); }
   function fmtSets(e) {
+    var t;
     if (e.s && e.s.some(function (x) { return x.w || x.r; })) {
-      return e.s.map(function (x) { return (x.w || "?") + " × " + (x.r || "?"); }).join(" · ");
-    }
-    return (e.w || "") + (e.r ? " · " + e.r : "");
+      t = e.s.map(function (x) { return (x.w || "?") + " × " + (x.r || "?"); }).join(" · ");
+    } else t = (e.w || "") + (e.r ? " · " + e.r : "");
+    if (e.dr && (e.dr.w || e.dr.r)) t += " ↓ drop " + (e.dr.w || "?") + " × " + (e.dr.r || "?");
+    return t;
   }
   function bestReps(e) { return e.rm || num(e.r) || 0; }
   function allReached(e, topR) {
@@ -586,7 +588,7 @@
   function collect(card) {
     var ws = card.querySelectorAll('[data-f="w"]'), rs = card.querySelectorAll('[data-f="r"]'), s = [];
     for (var i = 0; i < ws.length; i++) s.push({ w: ws[i].value, r: rs[i].value });
-    return { s: s, n: card.querySelector('[data-f="n"]').checked };
+    return { s: s, n: card.querySelector('[data-f="n"]').checked, dw: card.querySelector('[data-f="dw"]').value, dr: card.querySelector('[data-f="dr"]').value };
   }
 
   function exHTML(day, it) {
@@ -594,6 +596,7 @@
     var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), total = setsOf(it[1]), dr = drafts[key];
     var fields = dr ? dr.s : initialFields(total, te, pe);
     var drop = dr ? dr.n : te ? /drop/i.test(te.n || "") : false;
+    var dw = dr ? dr.dw : te && te.dr ? te.dr.w || "" : "", drr = dr ? dr.dr : te && te.dr ? te.dr.r || "" : "";
     var steps = ex.s.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
     var h = '<article class="ex" data-key="' + key + '" data-done="' + (!!te) + '">';
     h += '<div class="ex-top"><div class="ex-main"><div class="ex-name">' + esc(ex.n) + (te ? '<span class="badge">Salvo hoje</span>' : "") +
@@ -614,6 +617,8 @@
         '<input type="text" inputmode="numeric" data-f="r" data-i="' + i + '" value="' + esc(f.r) + '" placeholder="' + esc(ph) + '" autocomplete="off"></div>';
     }
     h += '<label class="check"><input type="checkbox" data-f="n"' + (drop ? " checked" : "") + '> Drop na última série</label>';
+    h += '<div class="srow drop" id="drop-row"' + (drop ? "" : " hidden") + '><b>↓</b><input type="text" data-f="dw" value="' + esc(dw) + '" placeholder="carga do drop" autocomplete="off">' +
+      '<input type="text" inputmode="numeric" data-f="dr" value="' + esc(drr) + '" placeholder="reps do drop" autocomplete="off"></div>';
     h += '<button class="btn primary big save" data-save="' + key + '">' + (te ? "Atualizar registro" : "Salvar séries") + "</button>";
     h += '<div class="row2">' + (pe ? '<button class="btn small" data-copyprev="' + key + '">Copiar última vez</button>' : "") +
       '<button class="btn small" data-swap="' + key + '">Trocar exercício</button>' +
@@ -738,6 +743,7 @@
     sets.forEach(function (x) { if (!firstW && x.w) firstW = x.w; if (x.r) { rs.push(x.r); rm = Math.max(rm, num(x.r) || 0); } });
     var list = state.logs[key] || [];
     var t = todayISO(), entry = { d: t, w: firstW, r: rs.join("/"), rm: rm, n: c.n ? "drop na última" : "", s: sets }, found = false;
+    if (c.n && (c.dw.trim() || c.dr.trim())) entry.dr = { w: c.dw.trim(), r: c.dr.trim() };
     for (var i = 0; i < list.length; i++) if (list[i].d === t) { list[i] = entry; found = true; }
     if (!found) list.push(entry);
     list.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
@@ -1018,6 +1024,13 @@
       if (wb) wb.innerHTML = warmupHTML(e.target.value, focusIdx(day));
     }
   });
+  $("day").addEventListener("change", function (e) {
+    if (e.target.getAttribute && e.target.getAttribute("data-f") === "n") {
+      var card = e.target.closest(".ex");
+      $("drop-row").hidden = !e.target.checked;
+      drafts[card.getAttribute("data-key")] = collect(card);
+    }
+  });
   $("day").addEventListener("toggle", function (e) { if (e.target.classList && e.target.classList.contains("how")) guideOpen = e.target.open; }, true);
   /* Deslizar para o lado troca de exercício. */
   (function () {
@@ -1115,6 +1128,7 @@
       state.logs[k].forEach(function (e) {
         var base = [e.d, day ? day.title : p[0], ex ? ex.n : p[1]];
         if (e.s && e.s.length) e.s.forEach(function (x, i) { rows.push(base.concat([i + 1, x.w, x.r, i === e.s.length - 1 ? e.n : ""])); });
+        if (e.dr) rows.push(base.concat(["drop", e.dr.w, e.dr.r, ""]));
         else rows.push(base.concat(["", e.w, e.r, e.n]));
       });
     });
