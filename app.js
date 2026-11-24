@@ -662,7 +662,7 @@
       '<input type="text" inputmode="numeric" data-f="dr" value="' + esc(drr) + '" placeholder="reps do drop" autocomplete="off"></div>';
     h += '<input type="text" class="bi-name" id="bi-name" data-f="bx" value="' + esc(bx) + '" placeholder="Exercício do bi-set (ex.: Tríceps francês na polia)" autocomplete="off"' + (tech === "bi" || tech === "biall" ? "" : " hidden") + '>';
     h += '<button class="btn primary big save" data-save="' + key + '">' + (te ? "Atualizar registro" : "Salvar séries") + "</button>";
-    h += '<div class="row2">' + (pe ? '<button class="btn small" data-copyprev="' + key + '">Copiar última vez</button>' : "") +
+    h += '<div class="row2">' + (total > 1 ? '<button class="btn small" data-copyfirst="1">Repetir série 1 em todas</button>' : "") + (pe ? '<button class="btn small" data-copyprev="' + key + '">Copiar última vez</button>' : "") +
       '<button class="btn small" data-swap="' + key + '">Trocar exercício</button>' +
       (swappedFrom(day.id, it[0]) ? '<button class="btn small" data-unswap="' + key + '">Desfazer troca</button>' : "") + "</div>";
     h += "</div>";
@@ -1038,6 +1038,14 @@
       drafts[card.getAttribute("data-key")] = collect(card);
       $("warm-body").innerHTML = warmupHTML(us.getAttribute("data-usesug"), focusIdx(findDay(current)));
       toast("Carga sugerida aplicada");
+      return;
+    }
+    var cf = e.target.closest("[data-copyfirst]");
+    if (cf) {
+      var cd = cf.closest(".ex"), cw = cd.querySelectorAll('[data-f="w"]'), cr = cd.querySelectorAll('[data-f="r"]');
+      for (var z = 1; z < cw.length; z++) { cw[z].value = cw[0].value; cr[z].value = cr[0].value; }
+      drafts[cd.getAttribute("data-key")] = collect(cd);
+      toast("Série 1 repetida nas demais");
       return;
     }
     var cp = e.target.closest("[data-copyprev]");
