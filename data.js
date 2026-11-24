@@ -171,6 +171,15 @@ var EX = {
     e: "Parece abrir uma cortina pesada, uma de cada lado.",
     x: "Puxar em direção ao quadril: vira remada e tira o foco do ombro posterior. Use carga leve."
   },
+  "rosca-scott": {
+    n: "Rosca Scott", m: "Bíceps, braquial",
+    s: ["Ajuste o banco para a axila encostar no topo do apoio e os braços ficarem apoiados por inteiro.",
+        "Segure a barra (reta ou W) com pegada na largura dos ombros e comece com os braços quase esticados.",
+        "Flexione os cotovelos até a barra chegar perto do peito, sem tirar os braços do apoio.",
+        "Volte devagar, controlando a descida, e pare antes de travar o cotovelo."],
+    e: "Parece trazer a barra até o queixo sem deixar o braço sair do travesseiro.",
+    x: "Jogar o corpo para trás ou esticar o cotovelo de uma vez na descida. Reduza a carga e controle."
+  },
   "crucifixo-inverso": {
     n: "Crucifixo inverso", m: "Ombro posterior, parte alta das costas",
     s: ["Na máquina (peck deck invertido) ou com halteres, inclinado à frente.",
