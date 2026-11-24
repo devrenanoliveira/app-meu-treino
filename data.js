@@ -293,12 +293,12 @@ var EX = {
 /* ---------- Treinos por dia ---------- */
 var DAYS = [
   { id: "seg", d: "Seg", t: "Push", l: "Pesado", c: "push", title: "Segunda · Push A", sub: "Dia pesado", items: [
-    ["supino-reto", "3x6-8", { d: "23/11", w: "30 kg", r: "8 reps", n: "drop na última" }],
-    ["supino-inc-halt", "3x8-10", { d: "23/11", w: "25 kg por lado", r: "10 reps", n: "drop na última" }],
+    ["supino-reto", "3x6-8", { d: "23/11", w: "30 kg", r: "8", n: "drop na última" }],
+    ["supino-inc-halt", "3x8-10", { d: "23/11", w: "25 kg por lado", r: "10", n: "drop na última" }],
     ["voador", "3x10-12", { d: "23/11", w: "9 placas", r: "", n: "drop na última" }],
-    ["des-halt", "3x8-10", { d: "23/11", w: "10 placas", r: "10 reps", n: "drop na última" }],
-    ["elev-lat", "3x12-15", { d: "23/11", w: "14 kg", r: "10 reps", n: "drop na última" }],
-    ["triceps-polia", "3x10-12", { d: "23/11", w: "12 placas", r: "cerca de 10 reps", n: "drop na última" }] ] },
+    ["des-halt", "3x8-10", { d: "23/11", w: "10 placas", r: "10", n: "drop na última" }],
+    ["elev-lat", "3x12-15", { d: "23/11", w: "14 kg", r: "10", n: "drop na última" }],
+    ["triceps-polia", "3x10-12", { d: "23/11", w: "12 placas", r: "10", n: "drop na última" }] ] },
   { id: "ter", d: "Ter", t: "Pull", l: "A", c: "pull", title: "Terça · Pull A", sub: "Puxada como exercício principal", items: [
     ["puxada", "3x6-10"], ["remada-horiz", "3x8-10"], ["remada-unilat", "3x10-12"], ["crucifixo-inverso", "3x12-15"], ["rosca-direta", "3x8-10"], ["rosca-martelo", "3x10-12"] ] },
   { id: "qua", d: "Qua", t: "Legs", l: "Pesado", c: "legs", title: "Quarta · Legs A", sub: "Dia pesado", items: [

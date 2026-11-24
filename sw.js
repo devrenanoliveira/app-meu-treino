@@ -1,5 +1,5 @@
 /* Service worker: guarda os arquivos do app para abrir sem internet e atualiza em segundo plano. */
-var CACHE = "meutreino-v14";
+var CACHE = "meutreino-v15";
 var ASSETS = [
   "./", "./index.html", "./style.css", "./data.js", "./app.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png"

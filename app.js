@@ -47,6 +47,15 @@
     state.sessions = Array.isArray(state.sessions) ? state.sessions : [];
     state.settings = Object.assign({}, DEFAULTS, state.settings || {});
     state.body = Array.isArray(state.body) ? state.body : [];
+    var digits = function (v) { var m = String(v == null ? "" : v).match(/\d+/); return m ? m[0] : ""; };
+    Object.keys(state.logs).forEach(function (k) {
+      (state.logs[k] || []).forEach(function (e) {
+        if (e.r && !/^\d+(\/\d+)*$/.test(String(e.r))) e.r = String(e.r).split("/").map(digits).filter(Boolean).join("/");
+        (e.s || []).forEach(function (x) { if (x.r && !/^\d+$/.test(String(x.r))) x.r = digits(x.r); });
+        if (e.dr && e.dr.r) e.dr.r = digits(e.dr.r);
+        if (e.bs && e.bs.r) e.bs.r = digits(e.bs.r);
+      });
+    });
     if (!state.swaps || typeof state.swaps !== "object") state.swaps = { d: "", map: {} };
   }
   fixState();
@@ -538,8 +547,9 @@
     var t;
     if (e.s && e.s.some(function (x) { return x.w || x.r; })) {
       t = e.s.map(function (x) { return (x.w || "?") + " × " + (x.r || "?"); }).join(" · ");
-    } else t = (e.w || "") + (e.r ? " · " + e.r : "");
+    } else t = (e.w || "") + (e.r ? " × " + e.r : "");
     if (e.dr && (e.dr.w || e.dr.r)) t += " ↓ drop " + (e.dr.w || "?") + " × " + (e.dr.r || "?");
+    if (e.bs && (e.bs.x || e.bs.w || e.bs.r)) t += " + bi-set " + (e.bs.x ? e.bs.x + " " : "") + (e.bs.w || "?") + " × " + (e.bs.r || "?");
     return t;
   }
   function bestReps(e) { return e.rm || num(e.r) || 0; }
@@ -588,15 +598,18 @@
   function collect(card) {
     var ws = card.querySelectorAll('[data-f="w"]'), rs = card.querySelectorAll('[data-f="r"]'), s = [];
     for (var i = 0; i < ws.length; i++) s.push({ w: ws[i].value, r: rs[i].value });
-    return { s: s, n: card.querySelector('[data-f="n"]').checked, dw: card.querySelector('[data-f="dw"]').value, dr: card.querySelector('[data-f="dr"]').value };
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
+    return { s: s, t: g("t"), dw: g("dw"), dr: g("dr"), bx: g("bx"), bw: g("bw"), br: g("br") };
   }
 
   function exHTML(day, it) {
     var ex = EX[it[0]], key = day.id + ":" + it[0], idx = day.items.indexOf(it);
     var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), total = setsOf(it[1]), dr = drafts[key];
     var fields = dr ? dr.s : initialFields(total, te, pe);
-    var drop = dr ? dr.n : te ? /drop/i.test(te.n || "") : false;
+    var tech = dr ? dr.t : te ? (/drop/i.test(te.n || "") ? "drop" : /bi/i.test(te.n || "") ? "bi" : "") : "";
     var dw = dr ? dr.dw : te && te.dr ? te.dr.w || "" : "", drr = dr ? dr.dr : te && te.dr ? te.dr.r || "" : "";
+    var bs = te && te.bs ? te.bs : {};
+    var bx = dr ? dr.bx : bs.x || "", bw = dr ? dr.bw : bs.w || "", br = dr ? dr.br : bs.r || "";
     var steps = ex.s.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
     var h = '<article class="ex" data-key="' + key + '" data-done="' + (!!te) + '">';
     h += '<div class="ex-top"><div class="ex-main"><div class="ex-name">' + esc(ex.n) + (te ? '<span class="badge">Salvo hoje</span>' : "") +
@@ -616,9 +629,14 @@
       h += '<div class="srow"><b>' + (i + 1) + '</b><input type="text" data-f="w" data-i="' + i + '" value="' + esc(f.w) + '" placeholder="kg ou placas" autocomplete="off">' +
         '<input type="text" inputmode="numeric" data-f="r" data-i="' + i + '" value="' + esc(f.r) + '" placeholder="' + esc(ph) + '" autocomplete="off"></div>';
     }
-    h += '<label class="check"><input type="checkbox" data-f="n"' + (drop ? " checked" : "") + '> Drop na última série</label>';
-    h += '<div class="srow drop" id="drop-row"' + (drop ? "" : " hidden") + '><b>↓</b><input type="text" data-f="dw" value="' + esc(dw) + '" placeholder="carga do drop" autocomplete="off">' +
+    h += '<label class="tech">Técnica na última série<select data-f="t"><option value=""' + (tech === "" ? " selected" : "") + '>Nenhuma</option>' +
+      '<option value="drop"' + (tech === "drop" ? " selected" : "") + '>Drop set (baixar a carga)</option>' +
+      '<option value="bi"' + (tech === "bi" ? " selected" : "") + '>Bi-set (outro exercício direto)</option></select></label>';
+    h += '<div class="srow drop" id="drop-row"' + (tech === "drop" ? "" : " hidden") + '><b>↓</b><input type="text" data-f="dw" value="' + esc(dw) + '" placeholder="carga do drop" autocomplete="off">' +
       '<input type="text" inputmode="numeric" data-f="dr" value="' + esc(drr) + '" placeholder="reps do drop" autocomplete="off"></div>';
+    h += '<div id="bi-row"' + (tech === "bi" ? "" : " hidden") + '><input type="text" class="bi-name" data-f="bx" value="' + esc(bx) + '" placeholder="Exercício do bi-set (ex.: Tríceps francês)" autocomplete="off">' +
+      '<div class="srow drop"><b>+</b><input type="text" data-f="bw" value="' + esc(bw) + '" placeholder="carga" autocomplete="off">' +
+      '<input type="text" inputmode="numeric" data-f="br" value="' + esc(br) + '" placeholder="reps" autocomplete="off"></div></div>';
     h += '<button class="btn primary big save" data-save="' + key + '">' + (te ? "Atualizar registro" : "Salvar séries") + "</button>";
     h += '<div class="row2">' + (pe ? '<button class="btn small" data-copyprev="' + key + '">Copiar última vez</button>' : "") +
       '<button class="btn small" data-swap="' + key + '">Trocar exercício</button>' +
@@ -742,8 +760,9 @@
     var firstW = "", rs = [], rm = 0;
     sets.forEach(function (x) { if (!firstW && x.w) firstW = x.w; if (x.r) { rs.push(x.r); rm = Math.max(rm, num(x.r) || 0); } });
     var list = state.logs[key] || [];
-    var t = todayISO(), entry = { d: t, w: firstW, r: rs.join("/"), rm: rm, n: c.n ? "drop na última" : "", s: sets }, found = false;
-    if (c.n && (c.dw.trim() || c.dr.trim())) entry.dr = { w: c.dw.trim(), r: c.dr.trim() };
+    var t = todayISO(), entry = { d: t, w: firstW, r: rs.join("/"), rm: rm, n: c.t === "drop" ? "drop na última" : c.t === "bi" ? "bi-set" : "", s: sets }, found = false;
+    if (c.t === "drop" && (c.dw.trim() || c.dr.trim())) entry.dr = { w: c.dw.trim(), r: c.dr.trim() };
+    if (c.t === "bi" && (c.bx.trim() || c.bw.trim() || c.br.trim())) entry.bs = { x: c.bx.trim(), w: c.bw.trim(), r: c.br.trim() };
     for (var i = 0; i < list.length; i++) if (list[i].d === t) { list[i] = entry; found = true; }
     if (!found) list.push(entry);
     list.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
@@ -1018,6 +1037,7 @@
     var f = e.target.getAttribute && e.target.getAttribute("data-f");
     var card = e.target.closest && e.target.closest(".ex");
     if (!f || !card) return;
+    if ((f === "r" || f === "dr" || f === "br") && /\D/.test(e.target.value)) e.target.value = e.target.value.replace(/\D/g, "");
     drafts[card.getAttribute("data-key")] = collect(card);
     if (f === "w" && e.target.getAttribute("data-i") === "0") {
       var day = findDay(current), wb = $("warm-body");
@@ -1025,9 +1045,10 @@
     }
   });
   $("day").addEventListener("change", function (e) {
-    if (e.target.getAttribute && e.target.getAttribute("data-f") === "n") {
+    if (e.target.getAttribute && e.target.getAttribute("data-f") === "t") {
       var card = e.target.closest(".ex");
-      $("drop-row").hidden = !e.target.checked;
+      $("drop-row").hidden = e.target.value !== "drop";
+      $("bi-row").hidden = e.target.value !== "bi";
       drafts[card.getAttribute("data-key")] = collect(card);
     }
   });
@@ -1129,6 +1150,7 @@
         var base = [e.d, day ? day.title : p[0], ex ? ex.n : p[1]];
         if (e.s && e.s.length) e.s.forEach(function (x, i) { rows.push(base.concat([i + 1, x.w, x.r, i === e.s.length - 1 ? e.n : ""])); });
         if (e.dr) rows.push(base.concat(["drop", e.dr.w, e.dr.r, ""]));
+        if (e.bs) rows.push(base.concat(["bi-set", e.bs.w, e.bs.r, e.bs.x]));
         else rows.push(base.concat(["", e.w, e.r, e.n]));
       });
     });
