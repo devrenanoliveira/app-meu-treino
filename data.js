@@ -153,6 +153,24 @@ var EX = {
     e: "Imagine puxar a barra com os cotovelos em direção ao teto.",
     x: "Arredondar a lombar ou usar impulso do quadril. Se isso acontece, reduza a carga."
   },
+  "remada-articulada": {
+    n: "Remada articulada na máquina", m: "Dorsal, meio das costas",
+    s: ["Regule o banco para o apoio ficar na altura do esterno e segure as pegadas com os braços esticados.",
+        "Cada braço puxa a sua alavanca. Pode alternar os lados ou puxar os dois juntos.",
+        "Puxe os cotovelos para trás e para baixo, apertando as costas no final.",
+        "Volte devagar até alongar bem as costas, sem tirar o peito do apoio."],
+    e: "Parece guardar os cotovelos nos bolsos de trás da calça.",
+    x: "Puxar com o ombro e a nuca. Pense em levar o cotovelo, não a mão."
+  },
+  "ombro-post-maq": {
+    n: "Ombro posterior na máquina articulada", m: "Ombro posterior, parte alta das costas",
+    s: ["Ajuste o banco e a pegada para as mãos ficarem na altura dos ombros.",
+        "Segure com os cotovelos levemente flexionados e o peito apoiado.",
+        "Abra os braços para trás e para os lados, na altura dos ombros, sem puxar para o quadril.",
+        "Segure 1 segundo e volte devagar."],
+    e: "Parece abrir uma cortina pesada, uma de cada lado.",
+    x: "Puxar em direção ao quadril: vira remada e tira o foco do ombro posterior. Use carga leve."
+  },
   "crucifixo-inverso": {
     n: "Crucifixo inverso", m: "Ombro posterior, parte alta das costas",
     s: ["Na máquina (peck deck invertido) ou com halteres, inclinado à frente.",
