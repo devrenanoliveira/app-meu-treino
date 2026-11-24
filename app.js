@@ -599,6 +599,19 @@
     }
     return arr;
   }
+  /* Monta os campos do exercício a partir de um registro anterior: cargas, reps, técnica, drop e bi-set. */
+  function draftFrom(e, total) {
+    var s = [], b = [], i, bs = e.bs || {};
+    for (i = 0; i < total; i++) {
+      var x = e.s && e.s[i];
+      s.push({ w: (x && x.w) || e.w || "", r: x ? (x.r || "") : (e.s ? "" : (e.r || "")) });
+      var y = bs.s ? bs.s[i] : (i === total - 1 && (bs.w || bs.r) ? { w: bs.w, r: bs.r } : null);
+      b.push({ w: (y && y.w) || "", r: (y && y.r) || "" });
+    }
+    var n = e.n || "";
+    return { s: s, b: b, t: /drop/i.test(n) ? "drop" : /todas/i.test(n) ? "biall" : /bi/i.test(n) ? "bi" : "",
+      dw: e.dr ? e.dr.w || "" : "", dr: e.dr ? e.dr.r || "" : "", bx: bs.x || "" };
+  }
   function collect(card) {
     var ws = card.querySelectorAll('[data-f="w"]'), rs = card.querySelectorAll('[data-f="r"]'), s = [];
     for (var i = 0; i < ws.length; i++) s.push({ w: ws[i].value, r: rs[i].value });
@@ -610,7 +623,8 @@
 
   function exHTML(day, it) {
     var ex = EX[it[0]], key = day.id + ":" + it[0], idx = day.items.indexOf(it);
-    var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), total = setsOf(it[1]), dr = drafts[key];
+    var te = todayEntry(key), pe = prevEntry(key), topR = topReps(it[1]), total = setsOf(it[1]);
+    var dr = drafts[key] || (!te && pe ? draftFrom(pe, total) : null);
     var fields = dr ? dr.s : initialFields(total, te, pe);
     var tech = dr ? dr.t : te ? (/drop/i.test(te.n || "") ? "drop" : /todas/i.test(te.n || "") ? "biall" : /bi/i.test(te.n || "") ? "bi" : "") : "";
     var dw = dr ? dr.dw : te && te.dr ? te.dr.w || "" : "", drr = dr ? dr.dr : te && te.dr ? te.dr.r || "" : "";
@@ -1027,7 +1041,7 @@
       return;
     }
     var cp = e.target.closest("[data-copyprev]");
-    if (cp) { delete drafts[cp.getAttribute("data-copyprev")]; var k0 = cp.getAttribute("data-copyprev"); drafts[k0] = { s: initialFields(setsOf(dayItem(findDay(current), k0)[1]), null, prevEntry(k0)), n: false }; renderDay(); toast("Carga da última vez copiada"); return; }
+    if (cp) { var k0 = cp.getAttribute("data-copyprev"); drafts[k0] = draftFrom(prevEntry(k0), setsOf(dayItem(findDay(current), k0)[1])); renderDay(); toast("Treino da última vez copiado"); return; }
     var sw = e.target.closest("[data-swap]");
     if (sw) {
       var kk = sw.getAttribute("data-swap");
