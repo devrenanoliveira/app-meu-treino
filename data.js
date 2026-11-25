@@ -180,6 +180,15 @@ var EX = {
     e: "Parece trazer a barra até o queixo sem deixar o braço sair do travesseiro.",
     x: "Jogar o corpo para trás ou esticar o cotovelo de uma vez na descida. Reduza a carga e controle."
   },
+  "agachamento-hack": {
+    n: "Agachamento hack na máquina", m: "Quadríceps, glúteos",
+    s: ["Posicione os pés na plataforma na largura dos ombros, com as costas e os ombros firmes nos apoios.",
+        "Destrave a máquina, desça devagar até as coxas ficarem paralelas à plataforma ou um pouco abaixo.",
+        "Empurre a plataforma com o pé inteiro, sem tirar o calcanhar, até quase esticar as pernas.",
+        "Mantenha o quadril e as costas encostados e não trave os joelhos no topo."],
+    e: "Parece sentar numa cadeira que desliza para trás e depois se levantar empurrando o chão.",
+    x: "Descer pouco para carregar mais peso ou travar os joelhos no topo. Pés mais baixos e juntos pegam mais o quadríceps. Pés mais altos e afastados pegam mais o glúteo."
+  },
   "crucifixo-inverso": {
     n: "Crucifixo inverso", m: "Ombro posterior, parte alta das costas",
     s: ["Na máquina (peck deck invertido) ou com halteres, inclinado à frente.",
