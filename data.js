@@ -189,6 +189,15 @@ var EX = {
     e: "Parece sentar numa cadeira que desliza para trás e depois se levantar empurrando o chão.",
     x: "Descer pouco para carregar mais peso ou travar os joelhos no topo. Pés mais baixos e juntos pegam mais o quadríceps. Pés mais altos e afastados pegam mais o glúteo."
   },
+  "panturrilha-leg-press": {
+    n: "Panturrilha no leg press", m: "Panturrilha",
+    s: ["Sente com as costas apoiadas e posicione só a ponta dos pés na borda de baixo da plataforma, com os calcanhares para fora.",
+        "Destrave a máquina e estique as pernas, sem travar os joelhos, e mantenha-os assim durante toda a série.",
+        "Empurre com a ponta dos pés, subindo o máximo que conseguir, e segure 1 segundo no topo.",
+        "Volte devagar, deixando os calcanhares descerem até alongar bem a panturrilha."],
+    e: "Parece ficar na ponta dos pés empurrando um pedal para longe.",
+    x: "Dobrar os joelhos para ajudar o movimento ou fazer repetições curtas. Faça o movimento completo, do alongamento até o topo."
+  },
   "crucifixo-inverso": {
     n: "Crucifixo inverso", m: "Ombro posterior, parte alta das costas",
     s: ["Na máquina (peck deck invertido) ou com halteres, inclinado à frente.",
