@@ -90,6 +90,15 @@ var EX = {
     e: "A máquina guia o trajeto, então foque em sentir o ombro trabalhando, não o braço.",
     x: "Travar os cotovelos com força no topo."
   },
+  "des-maq-reta": {
+    n: "Desenvolvimento na máquina (pegada reta)", m: "Ombros, tríceps",
+    s: ["Ajuste o assento para as manoplas começarem na altura do queixo ou da orelha.",
+        "Costas coladas no encosto e pegue as manoplas alinhadas, com as palmas para frente.",
+        "Empurre para cima até quase estender os braços, sem travar os cotovelos.",
+        "Volte em 2 a 3 segundos, sem deixar o peso bater."],
+    e: "Parece o desenvolvimento com barra, mas a máquina guia o trajeto, então dá para focar só no ombro.",
+    x: "Abrir demais os cotovelos para os lados ou arquear as costas para subir a carga."
+  },
   "elev-lat-polia": {
     n: "Elevação lateral na polia", m: "Ombro lateral",
     s: ["Polia baixa ao seu lado, pegue o cabo com a mão mais distante dela.",
