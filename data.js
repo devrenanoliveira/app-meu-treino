@@ -216,6 +216,15 @@ var EX = {
     e: "Parece ficar na ponta dos pés empurrando um pedal para longe.",
     x: "Dobrar os joelhos para ajudar o movimento ou fazer repetições curtas. Faça o movimento completo, do alongamento até o topo."
   },
+  "remada-apoiada-aberta": {
+    n: "Remada com apoio no peito (pegada aberta)", m: "Ombro posterior, parte alta das costas",
+    s: ["Ajuste o banco para o peito ficar apoiado no encosto, com os braços livres para puxar.",
+        "Segure as manoplas mais externas, com os cotovelos abertos, na altura dos ombros.",
+        "Puxe os cotovelos para trás, até a linha do tronco, sem encolher os ombros.",
+        "Segure 1 segundo e volte devagar, alongando sem soltar o peso."],
+    e: "Parece abrir os braços para trás, como se quisesse juntar as escápulas com os cotovelos para fora.",
+    x: "Puxar com o bíceps ou balançar o tronco. Cotovelos para baixo transformam em remada de costas e tiram o foco do ombro posterior."
+  },
   "crucifixo-inverso": {
     n: "Crucifixo inverso", m: "Ombro posterior, parte alta das costas",
     s: ["Na máquina (peck deck invertido) ou com halteres, inclinado à frente.",
