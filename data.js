@@ -127,7 +127,7 @@ var EX = {
     x: "Puxar a barra atrás da nuca, balançar o tronco ou puxar só com as mãos e os braços."
   },
   "puxada-neutra": {
-    n: "Puxada com pegada neutra", m: "Dorsal (parte inferior), bíceps",
+    n: "Puxada com triângulo (pegada neutra)", m: "Dorsal (parte inferior), bíceps",
     s: ["Use o triângulo ou a barra com pegadas paralelas.",
         "Peito alto, ombros longe das orelhas.",
         "Puxe até o triângulo chegar ao peito, cotovelos rentes ao corpo.",
@@ -143,6 +143,15 @@ var EX = {
         "Junte as escápulas por 1 segundo e volte alongando, sem jogar o tronco para a frente."],
     e: "É como dar a partida em um motor de popa: o movimento nasce nos cotovelos.",
     x: "Balançar o tronco para frente e para trás e encolher os ombros."
+  },
+  "remada-triangulo": {
+    n: "Remada baixa com triângulo (pegada fechada)", m: "Meio das costas, dorsal, bíceps",
+    s: ["Sentado com os pés apoiados e os joelhos levemente flexionados, segurando o triângulo.",
+        "Peito alto, coluna reta e ombros longe das orelhas.",
+        "Puxe o triângulo até o abdômen, com os cotovelos rentes ao corpo.",
+        "Segure 1 segundo juntando as escápulas e volte devagar, alongando as costas."],
+    e: "Os cotovelos passam rente às costelas, como se você os arrastasse por uma parede.",
+    x: "Balançar o tronco para trás para puxar mais peso ou encolher os ombros."
   },
   "remada-unilat": {
     n: "Remada unilateral com halter", m: "Dorsal, meio das costas",
